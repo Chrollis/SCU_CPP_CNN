@@ -20,43 +20,33 @@
 
 namespace chr {
 
-	unsigned swap_endian(unsigned val);
-	void read_and_save(const std::filesystem::path& mnist_img_path, const std::filesystem::path& mnist_label_path, size_t num, const std::filesystem::path& output_path);
-	void train_data(size_t num);
-	void test_data(size_t num);
-	std::vector<int> read_labels(const std::string& label_file_path);
-	std::vector<std::vector<int>> read_labels(const std::string& label_file_path, size_t batch_size);
+	namespace preprocess {
+		unsigned swap_endian(unsigned val);
+		void decompress_mnist(const std::filesystem::path& mnist_img_path, const std::filesystem::path& mnist_label_path, const std::filesystem::path& output_path);
+		void decompress_data();
+		std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num);
+		Eigen::MatrixXd padding(const Eigen::MatrixXd& input, size_t circle_num, double fill_num);
+		cv::Mat binarize_img(const cv::Mat& src_img);
+	}
 
-	double loss(const Eigen::VectorXd& input);
-	Eigen::MatrixXd convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride = 1);
-	std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num);
-	Eigen::MatrixXd padding(const Eigen::MatrixXd& input, size_t circle_num, double fill_num);
-
-	class data_loader {
-	public:
-		std::vector<Eigen::MatrixXd> process_single_img(const std::filesystem::path& path);
-		std::vector<std::vector<Eigen::MatrixXd>> build_batch(const std::vector<std::filesystem::path>& img_paths);
-		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> build_batches(const std::vector<std::filesystem::path>& img_paths, size_t batch_size);
-		std::vector<std::vector<Eigen::MatrixXd>> build_batch_from_directory(const std::filesystem::path& img_dir);
-		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> build_batches_from_directory(const std::filesystem::path& img_dir, size_t batch_size);
-	public:
-		cv::Mat preprocess_img(const cv::Mat& src_img);
+	namespace data_loader {
 		Eigen::MatrixXd process_digit(cv::Mat& digit_mat);
 		void apply_padding(cv::Mat& img);
 		bool is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size);
-		static Eigen::MatrixXd read_image_to_Eigen(const std::filesystem::path& path);
+		Eigen::MatrixXd read_image_to_Eigen(const std::filesystem::path& path);
+		std::vector<Eigen::MatrixXd> process_plural_digits(cv::Mat& digits_mat);
+		std::vector<std::vector<short>> mnist_label_batches(const std::filesystem::path& label_file_path, size_t total_size, size_t batch_size);
+		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> mnist_image_batches(const std::vector<std::filesystem::path>& img_paths, size_t batch_size);
+		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> mnist_image_batches_from_directory(const std::filesystem::path& img_dir, size_t total_size, size_t batch_size);
 	};
 
-	enum class activation_function_type : uchar {
+	enum class activation_function_type {
 		sigmoid,
 		tanh,
 		relu,
 		lrelu
 	};
-	enum class pooling_type : uchar {
-		max,
-		average
-	};
+
 	class activation_function {
 	private:
 		std::function<double(double)> function;
@@ -79,18 +69,22 @@ namespace chr {
 
 	class filter {
 	public:
-		size_t width = 3;
-		size_t channel = 1;
-		double bias = 0;
-		std::vector<Eigen::MatrixXd> kernels;
-		filter() = default;
-		filter(size_t channel, size_t width) :width(width), channel(channel) { initialize_gausz(0.01); }
+		size_t width_ = 3;
+		size_t channel_ = 1;
+		double bias_ = 0;
+		std::vector<Eigen::MatrixXd> kernels_;
+	public:
+		filter(size_t channel, size_t width) :width_(width), channel_(channel) { initialize_gausz(0.01); }
 		void initialize_gausz(double stddev);
 		void initialize_xavier(size_t input_size);
 		void initialize_He(size_t input_size);
-		void print_kernels() const;
 		void save(const std::filesystem::path& path) const;
 		void load(const std::filesystem::path& path);
+	};
+
+	enum class pooling_type {
+		max,
+		average
 	};
 
 	class pool_layer {
@@ -104,7 +98,7 @@ namespace chr {
 		std::vector<Eigen::MatrixXd> record_;
 	public:
 		pool_layer(size_t size, size_t stride, size_t padding = 0, pooling_type type = pooling_type::max) : size_(size), stride_(stride), padding_(padding), type_(type) {}
-        const std::vector<Eigen::MatrixXd>& feature_map() { return feature_map_; }
+		const std::vector<Eigen::MatrixXd>& feature_map() { return feature_map_; }
 		std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
 		std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& loss);
 	private:
@@ -115,81 +109,82 @@ namespace chr {
 		std::vector<Eigen::MatrixXd> remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding);
 	};
 
-	class full_connect_layer {
-    private:
-        size_t in_size_;
-        size_t out_size_;
-        activation_function afunc_;
-        Eigen::MatrixXd weights_;
-        Eigen::VectorXd biases_;
-        Eigen::VectorXd input_;
-        Eigen::VectorXd feature_vector_;
-        Eigen::VectorXd d_feature_vector_;
-        Eigen::VectorXd loss_;
-    public:
-        full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu) : in_size_(in_size), out_size_(out_size), afunc_(activate_type) { initialize_weights(); }
-		const Eigen::VectorXd& loss() const { return loss_; }
-		Eigen::VectorXd forward(const Eigen::VectorXd& input);
-        Eigen::VectorXd backward(const Eigen::VectorXd& loss, double learning_rate, bool is_output_layer = false, int label = 0);
-        void weights_update(double learning_rate);
-        Eigen::VectorXd get_flatten(const std::vector<Eigen::MatrixXd>& feature_map);
-        const Eigen::VectorXd& feature_vector() const { return feature_vector_; }
-        const Eigen::VectorXd& input() const { return input_; }
-        void save(const std::filesystem::path& path) const;
-        void load(const std::filesystem::path& path);
-    private:
-        void initialize_weights();
+	class convolve_layer {
+	private:
+		size_t in_channel_;
+		size_t kernel_size_;
+		size_t out_channel_;
+		size_t padding_;
+		size_t stride_;
+		activation_function afunc_;
+		std::vector<filter> filters_;
+		std::vector<Eigen::MatrixXd> input_;
+		std::vector<Eigen::MatrixXd> feature_map_;
+		std::vector<Eigen::MatrixXd> d_feature_map_;
+	public:
+		convolve_layer(size_t in_channel, size_t kernel_size, size_t out_channel, size_t padding = 0, size_t stride = 1, activation_function_type activate_type = activation_function_type::relu);
+		std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
+		std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& loss, bool is_last_conv = false);
+		void weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& loss);
+		const std::vector<Eigen::MatrixXd>& feature_map() const { return feature_map_; }
+		const std::vector<Eigen::MatrixXd>& input() const { return input_; }
+		void save(const std::filesystem::path& path) const;
+		void load(const std::filesystem::path& path);
+	private:
+		Eigen::MatrixXd convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride) const;
+		std::vector<Eigen::MatrixXd> apply_activation_derivative(const std::vector<Eigen::MatrixXd>& loss);
+		Eigen::MatrixXd compute_weight_gradient(const Eigen::MatrixXd& input, const Eigen::MatrixXd& loss) const { return convolve(input, loss, stride_); }
+		std::vector<Eigen::MatrixXd> remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding);
 	};
 
-    class convolve_layer {
-    private:
-        size_t in_channel_;
-        size_t kernel_size_;
-        size_t out_channel_;
-        size_t padding_;
-        size_t stride_;
-        activation_function afunc_;
-        std::vector<filter> filters_;
-        std::vector<Eigen::MatrixXd> input_;
-        std::vector<Eigen::MatrixXd> feature_map_;
-        std::vector<Eigen::MatrixXd> d_feature_map_;
-    public:
-        convolve_layer(size_t in_channel, size_t kernel_size, size_t out_channel, size_t padding = 0, size_t stride = 1, activation_function_type activate_type = activation_function_type::relu);
-        std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
-        std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& loss, bool is_last_conv = false);
-        void weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& loss);
-        const std::vector<Eigen::MatrixXd>& feature_map() const { return feature_map_; }
-        const std::vector<Eigen::MatrixXd>& input() const { return input_; }
-        void save(const std::filesystem::path& path) const;
-        void load(const std::filesystem::path& path);
-    private:
-        std::vector<Eigen::MatrixXd> apply_activation_derivative(const std::vector<Eigen::MatrixXd>& loss);
-		Eigen::MatrixXd compute_weight_gradient(const Eigen::MatrixXd& input, const Eigen::MatrixXd& loss) const { return convolve(input, loss, stride_); }
-        std::vector<Eigen::MatrixXd> remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding);
-    };
+	class full_connect_layer {
+	private:
+		size_t in_size_;
+		size_t out_size_;
+		activation_function afunc_;
+		Eigen::MatrixXd weights_;
+		Eigen::VectorXd biases_;
+		Eigen::VectorXd input_;
+		Eigen::VectorXd feature_vector_;
+		Eigen::VectorXd d_feature_vector_;
+		Eigen::VectorXd loss_;
+	public:
+		full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu) : in_size_(in_size), out_size_(out_size), afunc_(activate_type) { initialize_weights(); }
+		Eigen::VectorXd forward(const Eigen::VectorXd& input);
+		Eigen::VectorXd backward(const Eigen::VectorXd& loss, double learning_rate, bool is_output_layer = false, int label = 0);
+		void weights_update(double learning_rate);
+		Eigen::VectorXd get_flatten(const std::vector<Eigen::MatrixXd>& feature_map);
+		const Eigen::VectorXd& feature_vector() const { return feature_vector_; }
+		const Eigen::VectorXd& input() const { return input_; }
+		const Eigen::VectorXd& loss() const { return loss_; }
+		void save(const std::filesystem::path& path) const;
+		void load(const std::filesystem::path& path);
+	private:
+		void initialize_weights();
+	};
 
-    class le_net5 {
-    private:
-        convolve_layer conv1_;
-        pool_layer pool1_;
-        convolve_layer conv2_;
-        pool_layer pool2_;
-        full_connect_layer fc1_;
-        full_connect_layer fc2_;
-        full_connect_layer fc3_;
-    public:
-        le_net5();
-        Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input);
-        double train(const std::vector<std::vector<Eigen::MatrixXd>>& dataset, const std::vector<int>& labels, size_t epochs, double learning_rate);
-        int predict(const Eigen::VectorXd& output);
-        void save(const std::filesystem::path& path);
-        void load(const std::filesystem::path& path);
+	class le_net5 {
+	private:
+		convolve_layer conv1_;
+		pool_layer pool1_;
+		convolve_layer conv2_;
+		pool_layer pool2_;
+		full_connect_layer fc1_;
+		full_connect_layer fc2_;
+		full_connect_layer fc3_;
+	public:
+		le_net5();
+		Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input);
+		double train(const std::vector<std::vector<Eigen::MatrixXd>>& dataset, const std::vector<short>& labels, size_t epochs, double learning_rate);
+		int predict(const Eigen::VectorXd& output);
+		void save(const std::filesystem::path& path);
+		void load(const std::filesystem::path& path);
 		void backward(int label, double learning_rate);
-    private:
-        double cross_entropy_loss(const Eigen::VectorXd& output, int label);
-        std::vector<Eigen::MatrixXd> vector_to_feature_map(const Eigen::VectorXd& vec, size_t channels, size_t rows, size_t cols);
-        std::vector<Eigen::MatrixXd> safe_vector_to_feature_map(const Eigen::VectorXd& vec, const std::vector<Eigen::MatrixXd>& target_shape);
-    };
+	private:
+		double cross_entropy_loss(const Eigen::VectorXd& output, int label);
+		std::vector<Eigen::MatrixXd> vector_to_feature_map(const Eigen::VectorXd& vec, size_t channels, size_t rows, size_t cols);
+		std::vector<Eigen::MatrixXd> safe_vector_to_feature_map(const Eigen::VectorXd& vec, const std::vector<Eigen::MatrixXd>& target_shape);
+	};
 }
 
 #endif // !CHR_CNN_HPP

@@ -1,310 +1,222 @@
 #include "chr_cnn.hpp"
 
 namespace chr {
-	unsigned swap_endian(unsigned val) {
-		val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);
-		return (val << 16) | (val >> 16);
-	}
-	void read_and_save(const std::filesystem::path& mnist_img_path, const std::filesystem::path& mnist_label_path, size_t num, const std::filesystem::path& output_path) {
-		std::ifstream mnist_img(mnist_img_path, std::ios::binary);
-		std::ifstream mnist_label(mnist_label_path, std::ios::binary);
-		if (!mnist_img.is_open()) {
-			throw std::runtime_error("打开MNIST图像文件失败");
-		}
-		if (!mnist_label.is_open()) {
-			throw std::runtime_error("打开MNIST标签文件失败");
-		}
-		unsigned magic = 0;
-		unsigned items = 0, labels = 0;
-		unsigned rows = 0, cols = 0;
-		mnist_img.read(reinterpret_cast<char*>(&magic), 4);
-		magic = swap_endian(magic);
-		if (magic != 2051) {
-			throw std::runtime_error("所选文件不是MNIST图像文件");
-		}
-		mnist_label.read(reinterpret_cast<char*>(&magic), 4);
-		magic = swap_endian(magic);
-		if (magic != 2049) {
-			throw std::runtime_error("所选文件不是MNIST标签文件");
-		}
-		mnist_img.read(reinterpret_cast<char*>(&items), 4);
-		items = swap_endian(items);
-		mnist_label.read(reinterpret_cast<char*>(&labels), 4);
-		labels = swap_endian(labels);
-		if (items != labels) {
-			throw std::runtime_error("图像文件与标签文件不成对");
-		}
-		mnist_img.read(reinterpret_cast<char*>(&rows), 4);
-		rows = swap_endian(rows);
-		mnist_img.read(reinterpret_cast<char*>(&cols), 4);
-		cols = swap_endian(cols);
 
-		std::ofstream file(output_path / "label.txt");
-		size_t number[10] = { 0 };
-		char* pixels = new char[rows * cols];
-		char* label = new char;
-		for (size_t i = 0; i < num && i < items; i++) {
-			mnist_img.read(pixels, static_cast<std::streamsize>(rows) * cols);
-			mnist_label.read(label, 1);
-			file << std::to_string(*label) + " ";
-			number[*label] += 1;
-			cv::Mat img(rows, cols, CV_8UC1);
-			for (size_t m = 0; m < rows; m++) {
-				uchar* ptr = img.ptr<uchar>(static_cast<int>(m));
-				for (size_t n = 0; n < cols; n++) {
-					ptr[n] = pixels[m * cols + n] ? 0xFF : 0x00;
-				}
+	namespace preprocess {
+		unsigned swap_endian(unsigned val) {
+			val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);
+			return (val << 16) | (val >> 16);
+		}
+		void decompress_mnist(const std::filesystem::path& mnist_img_path, const std::filesystem::path& mnist_label_path, const std::filesystem::path& output_path) {
+			std::ifstream mnist_img(mnist_img_path, std::ios::binary);
+			std::ifstream mnist_label(mnist_label_path, std::ios::binary);
+			if (!mnist_img.is_open()) {
+				throw std::runtime_error("打开MNIST图像文件失败");
 			}
-			std::string out = (output_path / (std::to_string(i) + ".jpg")).string();
-			cv::imwrite(out, img);
-		}
-		delete[] pixels;
-		delete label;
-		mnist_img.close();
-		mnist_label.close();
-		file.close();
-	}
-	void train_data(size_t num) {
-		try {
-			for (const auto& entry : std::filesystem::directory_iterator("MNIST_train_data")) {
-				if (entry.is_directory()) {
-					std::filesystem::remove_all(entry.path());
-				}
-				else {
-					std::filesystem::remove(entry.path());
-				}
+			if (!mnist_label.is_open()) {
+				throw std::runtime_error("打开MNIST标签文件失败");
 			}
-			read_and_save("MNIST_data/train-images.idx3-ubyte", "MNIST_data/train-labels.idx1-ubyte", num, "MNIST_train_data");
-		}
-		catch (const std::exception& e) {
-			std::cerr << e.what() << "\n";
-		}
-	}
-	void test_data(size_t num) {
-		try {
-			for (const auto& entry : std::filesystem::directory_iterator("MNIST_test_data")) {
-				if (entry.is_directory()) {
-					std::filesystem::remove_all(entry.path());
-				}
-				else {
-					std::filesystem::remove(entry.path());
-				}
+			unsigned magic = 0;
+			unsigned items = 0, labels = 0;
+			unsigned rows = 0, cols = 0;
+			mnist_img.read(reinterpret_cast<char*>(&magic), 4);
+			magic = swap_endian(magic);
+			if (magic != 2051) {
+				throw std::runtime_error("所选文件不是MNIST图像文件");
 			}
-			read_and_save("MNIST_data/t10k-images.idx3-ubyte", "MNIST_data/t10k-labels.idx1-ubyte", num, "MNIST_test_data");
-		}
-		catch (const std::exception& e) {
-			std::cerr << e.what() << "\n";
-		}
-	}
-	std::vector<int> read_labels(const std::string& label_file_path) {
-		std::vector<int> labels;
-		std::ifstream file(label_file_path);
-		std::string line;
-		while (std::getline(file, line)) {
-			std::istringstream iss(line);
-			int label;
-			while (iss >> label) {
-				labels.push_back(label);
+			mnist_label.read(reinterpret_cast<char*>(&magic), 4);
+			magic = swap_endian(magic);
+			if (magic != 2049) {
+				throw std::runtime_error("所选文件不是MNIST标签文件");
 			}
-		}
-		return labels;
-	}
-	std::vector<std::vector<int>> read_labels(const std::string& label_file_path, size_t batch_size) {
-		std::vector<std::vector<int>> labels_batch;
-		std::vector<int> labels;
-		std::ifstream file(label_file_path);
-		std::string line;
-		while (std::getline(file, line)) {
-			std::istringstream iss(line);
-			int label;
-			while (iss >> label) {
-				labels.push_back(label);
-				if (labels.size() >= batch_size) {
-					labels_batch.push_back(labels);
-					labels.clear();
+			mnist_img.read(reinterpret_cast<char*>(&items), 4);
+			items = swap_endian(items);
+			mnist_label.read(reinterpret_cast<char*>(&labels), 4);
+			labels = swap_endian(labels);
+			if (items != labels) {
+				throw std::runtime_error("图像文件与标签文件不成对");
+			}
+			mnist_img.read(reinterpret_cast<char*>(&rows), 4);
+			rows = swap_endian(rows);
+			mnist_img.read(reinterpret_cast<char*>(&cols), 4);
+			cols = swap_endian(cols);
+			std::ofstream file(output_path / "label.txt");
+			std::vector<unsigned char> pixels(rows * cols);
+			unsigned char label = 0;
+			for (size_t i = 0; i < items; i++) {
+				mnist_img.read(reinterpret_cast<char*>(&pixels), static_cast<std::streamsize>(rows) * cols);
+				mnist_label.read(reinterpret_cast<char*>(&label), 1);
+				file << std::to_string(label) + " ";
+				cv::Mat img(rows, cols, CV_8UC1);
+				for (size_t m = 0; m < rows; m++) {
+					uchar* ptr = img.ptr<uchar>(static_cast<int>(m));
+					for (size_t n = 0; n < cols; n++) {
+						ptr[n] = static_cast<unsigned char>(pixels[m * cols + n]) / 255.0;
+					}
 				}
+				std::string out = (output_path / (std::to_string(i) + ".jpg")).string();
+				cv::imwrite(out, img);
+			}
+			mnist_img.close();
+			mnist_label.close();
+			file.close();
+		}
+		void decompress_data() {
+			try {
+				std::filesystem::create_directory("MNIST_train_data");
+				decompress_mnist("MNIST_data/train-images.idx3-ubyte", "MNIST_data/train-labels.idx1-ubyte", "MNIST_train_data");
+				std::filesystem::create_directory("MNIST_test_data");
+				decompress_mnist("MNIST_data/t10k-images.idx3-ubyte", "MNIST_data/t10k-labels.idx1-ubyte", "MNIST_test_data");
+			}
+			catch (const std::exception& e) {
+				std::cout << e.what() << "\n";
 			}
 		}
-		if (labels.size() > 0) {
-			labels_batch.push_back(labels);
-			labels.clear();
+		std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num) {
+			std::vector<Eigen::MatrixXd> result;
+			for (const auto& channel : input) {
+				size_t new_rows = channel.rows() + 2 * circle_num;
+				size_t new_cols = channel.cols() + 2 * circle_num;
+				Eigen::MatrixXd padded = Eigen::MatrixXd::Constant(new_rows, new_cols, fill_num);
+				padded.block(circle_num, circle_num, channel.rows(), channel.cols()) = channel;
+				result.push_back(padded);
+			}
+			return result;
 		}
-		return labels_batch;
+		Eigen::MatrixXd padding(const Eigen::MatrixXd& input, size_t circle_num, double fill_num) {
+			size_t new_rows = input.rows() + 2 * circle_num;
+			size_t new_cols = input.cols() + 2 * circle_num;
+			Eigen::MatrixXd result = Eigen::MatrixXd::Constant(new_rows, new_cols, fill_num);
+			result.block(circle_num, circle_num, input.rows(), input.cols()) = input;
+			return result;
+		}
+		cv::Mat binarize_img(const cv::Mat& src_img) {
+			cv::Mat gray;
+			if (src_img.channels() == 3) {
+				cv::cvtColor(src_img, gray, cv::COLOR_BGR2GRAY);
+			}
+			else {
+				gray = src_img.clone();
+			}
+			cv::Mat binary;
+			cv::threshold(gray, binary, 150, 255, cv::THRESH_BINARY_INV);
+			return binary;
+		}
 	}
-	double loss(const Eigen::VectorXd& input) {
-		return input.norm() / 2;
-	}
-	Eigen::MatrixXd convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride) {
-		if (input.rows() < kernel.rows() || input.cols() < kernel.cols()) {
-			throw std::invalid_argument("输入维度小于卷积核维度");
-		}
-		long output_rows = static_cast<long>((input.rows() - kernel.rows()) / stride) + 1;
-		long output_cols = static_cast<long>((input.cols() - kernel.cols()) / stride) + 1;
-		if (output_rows <= 0 || output_cols <= 0) {
-			throw std::invalid_argument("卷积后输出维度无效");
-		}
-		Eigen::MatrixXd result = Eigen::MatrixXd::Zero(output_rows, output_cols);
-		Eigen::Map<const Eigen::VectorXd> kernel_flat(kernel.data(), kernel.size());
-		for (long i = 0; i < output_rows; i++) {
-			for (long j = 0; j < output_cols; j++) {
-				long start_row = i * stride;
-				long start_col = j * stride;
-				if (start_row + kernel.rows() <= input.rows() &&
-					start_col + kernel.cols() <= input.cols()) {
-					Eigen::MatrixXd block = input.block(start_row, start_col, kernel.rows(), kernel.cols());
-					Eigen::Map<const Eigen::VectorXd> block_flat(block.data(), block.size());
-					result(i, j) = block_flat.dot(kernel_flat);
+
+	namespace data_loader {
+		Eigen::MatrixXd process_digit(cv::Mat& digit_mat) {
+			apply_padding(digit_mat);
+			cv::Mat resized;
+			cv::resize(digit_mat, resized, cv::Size(28, 28), 0, 0, cv::INTER_AREA);
+			Eigen::MatrixXd eigen_digit(28, 28);
+			for (size_t i = 0; i < 28; i++) {
+				for (size_t j = 0; j < 28; j++) {
+					eigen_digit(i, j) = resized.at<uchar>(i, j) / 255.0;
 				}
 			}
+			return eigen_digit;
 		}
-		return result;
-	}
-	std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num) {
-		std::vector<Eigen::MatrixXd> result;
-		for (const auto& channel : input) {
-			size_t new_rows = channel.rows() + 2 * circle_num;
-			size_t new_cols = channel.cols() + 2 * circle_num;
-			Eigen::MatrixXd padded = Eigen::MatrixXd::Constant(new_rows, new_cols, fill_num);
-			padded.block(circle_num, circle_num, channel.rows(), channel.cols()) = channel;
-			result.push_back(padded);
+		void apply_padding(cv::Mat& img) {
+			unsigned top, bottom, left, right;
+			if (img.rows > img.cols) {
+				left = (img.rows - img.cols) / 2;
+				right = img.rows - img.cols - left;
+				top = bottom = 0;
+			}
+			else {
+				top = (img.cols - img.rows) / 2;
+				bottom = img.cols - img.rows - top;
+				left = right = 0;
+			}
+			cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0));
+			unsigned border_width = img.rows / 5;
+			cv::copyMakeBorder(img, img, border_width, border_width, border_width, border_width, cv::BORDER_CONSTANT, cv::Scalar(0));
 		}
-		return result;
-	}
-	Eigen::MatrixXd padding(const Eigen::MatrixXd& input, size_t circle_num, double fill_num) {
-		size_t new_rows = input.rows() + 2 * circle_num;
-		size_t new_cols = input.cols() + 2 * circle_num;
-		Eigen::MatrixXd result = Eigen::MatrixXd::Constant(new_rows, new_cols, fill_num);
-		result.block(circle_num, circle_num, input.rows(), input.cols()) = input;
-		return result;
-	}
-	std::vector<Eigen::MatrixXd> data_loader::process_single_img(const std::filesystem::path& path) {
-		std::vector<Eigen::MatrixXd> digits;
-		cv::Mat src_img = cv::imread(path.string());
-		if (src_img.empty()) {
-			throw std::runtime_error("无法读取图像: " + path.string());
+		bool is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size) {
+			double min_ratio = 0.1;
+			return (rect.width > image_size.width * min_ratio && rect.height > image_size.height * min_ratio);
 		}
-		cv::Mat processed = preprocess_img(src_img);
-		std::vector<std::vector<cv::Point>> contours;
-		std::vector<cv::Vec4i> hierarchy;
-		cv::findContours(processed, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-		for (size_t i = 0; i < contours.size(); i++) {
-			cv::Rect bounding_rect = cv::boundingRect(contours[i]);
-			if (is_valid_digit_region(bounding_rect, src_img.size())) {
-				cv::Mat digit_mat = processed(bounding_rect);
-				Eigen::MatrixXd digit = process_digit(digit_mat);
-				if (digit.size() > 0) {
-					digits.push_back(digit);
+		Eigen::MatrixXd read_image_to_Eigen(const std::filesystem::path& path) {
+			cv::Mat image = cv::imread(path.string(), cv::IMREAD_GRAYSCALE);
+			if (image.empty()) {
+				return Eigen::MatrixXd();
+			}
+			Eigen::MatrixXd result(image.rows, image.cols);
+			for (int i = 0; i < image.rows; ++i) {
+				for (int j = 0; j < image.cols; ++j) {
+					result(i, j) = static_cast<double>(image.at<uchar>(i, j)) / 255.0;
 				}
 			}
+			return result;
 		}
-		return digits;
-	}
-	std::vector<std::vector<Eigen::MatrixXd>> data_loader::build_batch(const std::vector<std::filesystem::path>& img_paths) {
-		std::vector<std::vector<Eigen::MatrixXd>> batch;
-		for (const auto& path : img_paths) {
-			auto digits = process_single_img(path);
-			if (!digits.empty()) {
-				batch.push_back(digits);
+		std::vector<Eigen::MatrixXd> process_plural_digits(cv::Mat& digits_mat) {
+			std::vector<Eigen::MatrixXd> digits;
+			cv::Mat processed = preprocess::binarize_img(digits_mat);
+			std::vector<std::vector<cv::Point>> contours;
+			std::vector<cv::Vec4i> hierarchy;
+			cv::findContours(processed, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+			for (size_t i = 0; i < contours.size(); i++) {
+				cv::Rect bounding_rect = cv::boundingRect(contours[i]);
+				if (is_valid_digit_region(bounding_rect, digits_mat.size())) {
+					cv::Mat digit_mat = processed(bounding_rect);
+					Eigen::MatrixXd digit = process_digit(digit_mat);
+					if (digit.size() > 0) {
+						digits.push_back(digit);
+					}
+				}
 			}
+			return digits;
 		}
-		return batch;
-	}
-	std::vector<std::vector<std::vector<Eigen::MatrixXd>>> data_loader::build_batches(const std::vector<std::filesystem::path>& img_paths, size_t batch_size) {
-		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> batches;
-		std::vector<std::vector<Eigen::MatrixXd>> batch;
-		for (const auto& path : img_paths) {
-			auto digits = process_single_img(path);
-			if (!digits.empty()) {
-				batch.push_back(digits);
+		std::vector<std::vector<short>> mnist_label_batches(const std::filesystem::path& label_file_path, size_t total_size, size_t batch_size) {
+			std::vector<std::vector<short>> batches;
+			std::vector<short> batch;
+			short label = 0;
+			std::ifstream file(label_file_path);
+			for (size_t i = 0; i < total_size; i++) {
+				file >> label;
+				batch.push_back(label);
 				if (batch.size() >= batch_size) {
-					batches.push_back(batch);
+					batches.push_back(std::move(batch));
 					batch.clear();
 				}
 			}
-		}
-		if (batch.size() > 0) {
-			batches.push_back(batch);
-			batch.clear();
-		}
-		return batches;
-	}
-	std::vector<std::vector<Eigen::MatrixXd>> data_loader::build_batch_from_directory(const std::filesystem::path& img_dir) {
-		std::vector<std::filesystem::path> img_paths;
-		for (const auto& entry : std::filesystem::directory_iterator(img_dir)) {
-			if (entry.path().extension() == ".jpg") {
-				img_paths.push_back(entry.path());
+			if (!batch.empty()) {
+				batches.push_back(batch);
+				batch.clear();
 			}
+			return batches;
 		}
-		return build_batch(img_paths);
-	}
-	std::vector<std::vector<std::vector<Eigen::MatrixXd>>> data_loader::build_batches_from_directory(const std::filesystem::path& img_dir, size_t batch_size) {
-		std::vector<std::filesystem::path> img_paths;
-		for (const auto& entry : std::filesystem::directory_iterator(img_dir)) {
-			if (entry.path().extension() == ".jpg") {
-				img_paths.push_back(entry.path());
+		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> mnist_image_batches(const std::vector<std::filesystem::path>& img_paths, size_t batch_size) {
+			std::vector<std::vector<std::vector<Eigen::MatrixXd>>> batches;
+			std::vector<std::vector<Eigen::MatrixXd>> batch;
+			for (const auto& path : img_paths) {
+				std::vector<Eigen::MatrixXd> digit;
+				digit.push_back(std::move(read_image_to_Eigen(path)));
+				batch.push_back(digit);
+				if (batch.size() >= batch_size) {
+					batches.push_back(std::move(batch));
+					batch.clear();
+				}
 			}
-		}
-		return build_batches(img_paths, batch_size);
-	}
-	cv::Mat data_loader::preprocess_img(const cv::Mat& src_img) {
-		cv::Rect roi(0, 0, src_img.cols, src_img.rows);
-		cv::Mat cropped = src_img(roi);
-		cv::Mat gray;
-		if (cropped.channels() == 3) {
-			cv::cvtColor(cropped, gray, cv::COLOR_BGR2GRAY);
-		}
-		else {
-			gray = cropped.clone();
-		}
-		cv::Mat binary;
-		cv::threshold(gray, binary, 150, 255, cv::THRESH_BINARY_INV);
-		return binary;
-	}
-	Eigen::MatrixXd data_loader::process_digit(cv::Mat& digit_mat) {
-		apply_padding(digit_mat);
-		cv::Mat resized;
-		cv::resize(digit_mat, resized, cv::Size(28, 28), 0, 0, cv::INTER_AREA);
-		Eigen::MatrixXd eigen_digit(28, 28);
-		for (size_t i = 0; i < 28; i++) {
-			for (size_t j = 0; j < 28; j++) {
-				eigen_digit(i, j) = resized.at<uchar>(i, j) > 0 ? 1.0 : 0.0;
+			if (!batch.empty()) {
+				batches.push_back(batch);
+				batch.clear();
 			}
+			return batches;
 		}
-		return eigen_digit;
-	}
-	void data_loader::apply_padding(cv::Mat& img) {
-		unsigned top, bottom, left, right;
-		if (img.rows > img.cols) {
-			left = (img.rows - img.cols) / 2;
-			right = img.rows - img.cols - left;
-			top = bottom = 0;
-		}
-		else {
-			top = (img.cols - img.rows) / 2;
-			bottom = img.cols - img.rows - top;
-			left = right = 0;
-		}
-		cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0));
-		unsigned border_width = img.rows / 5;
-		cv::copyMakeBorder(img, img, border_width, border_width, border_width, border_width, cv::BORDER_CONSTANT, cv::Scalar(0));
-	}
-	bool data_loader::is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size) {
-		double min_ratio = 0.1;
-		return (rect.width > image_size.width * min_ratio && rect.height > image_size.height * min_ratio);
-	}
-	Eigen::MatrixXd data_loader::read_image_to_Eigen(const std::filesystem::path& path) {
-		cv::Mat image = cv::imread(path.string(), cv::IMREAD_GRAYSCALE);
-		if (image.empty()) {
-			return Eigen::MatrixXd();
-		}
-		Eigen::MatrixXd result(image.rows, image.cols);
-		for (int i = 0; i < image.rows; ++i) {
-			for (int j = 0; j < image.cols; ++j) {
-				result(i, j) = image.at<uchar>(i, j) < 100 ? 0.0 : 1.0;
+		std::vector<std::vector<std::vector<Eigen::MatrixXd>>> mnist_image_batches_from_directory(const std::filesystem::path& img_dir, size_t total_size, size_t batch_size) {
+			std::vector<std::filesystem::path> img_paths;
+			for (const auto& entry : std::filesystem::directory_iterator(img_dir)) {
+				if (entry.path().extension() == ".jpg") {
+					img_paths.push_back(entry.path());
+				}
+				if (img_paths.size() >= total_size) break;
 			}
+			return mnist_image_batches(img_paths, batch_size);
 		}
-		return result;
 	}
+
 	activation_function::activation_function() {
 		function = [this](double x) {return sigmoid(x); };
 		derivative = [this](double x) {return sigmoid_derivative(x); };
@@ -332,67 +244,62 @@ namespace chr {
 			break;
 		}
 	}
+
 	void filter::initialize_gausz(double stddev) {
-		kernels.resize(channel);
+		kernels_.resize(channel_);
 		std::random_device rd;
 		std::default_random_engine generator(rd());
 		std::normal_distribution<double> distributor(0.0, stddev);
-		bias = distributor(generator);
-		for (size_t i = 0; i < channel; i++) {
-			kernels[i] = Eigen::MatrixXd::Zero(width, width);
-			for (size_t m = 0; m < width; m++) {
-				for (size_t n = 0; n < width; n++) {
-					kernels[i](m, n) = distributor(generator);
+		bias_ = distributor(generator);
+		for (size_t i = 0; i < channel_; i++) {
+			kernels_[i] = Eigen::MatrixXd::Zero(width_, width_);
+			for (size_t m = 0; m < width_; m++) {
+				for (size_t n = 0; n < width_; n++) {
+					kernels_[i](m, n) = distributor(generator);
 				}
 			}
 		}
 	}
 	void filter::initialize_xavier(size_t input_size) {
-		kernels.resize(channel);
+		kernels_.resize(channel_);
 		std::random_device rd;
 		std::default_random_engine generator(rd());
-		double limit = sqrt(6.0 / (input_size + channel * width * width));
+		double limit = sqrt(6.0 / (input_size + channel_ * width_ * width_));
 		std::uniform_real_distribution<double> distributor(-limit, limit);
-		bias = 0;
-		for (size_t i = 0; i < channel; i++) {
-			kernels[i] = Eigen::MatrixXd::Zero(width, width);
-			for (size_t m = 0; m < width; m++) {
-				for (size_t n = 0; n < width; n++) {
-					kernels[i](m, n) = distributor(generator);
+		bias_ = 0;
+		for (size_t i = 0; i < channel_; i++) {
+			kernels_[i] = Eigen::MatrixXd::Zero(width_, width_);
+			for (size_t m = 0; m < width_; m++) {
+				for (size_t n = 0; n < width_; n++) {
+					kernels_[i](m, n) = distributor(generator);
 				}
 			}
 		}
 	}
 	void filter::initialize_He(size_t input_size) {
-		kernels.resize(channel);
+		kernels_.resize(channel_);
 		std::random_device rd;
 		std::default_random_engine generator(rd());
 		double stddev = sqrt(2.0 / input_size);
 		std::normal_distribution<double> distributor(0.0, stddev);
-		bias = 0;
-		for (size_t i = 0; i < channel; i++) {
-			kernels[i] = Eigen::MatrixXd::Zero(width, width);
-			for (size_t m = 0; m < width; m++) {
-				for (size_t n = 0; n < width; n++) {
-					kernels[i](m, n) = distributor(generator);
+		bias_ = 0;
+		for (size_t i = 0; i < channel_; i++) {
+			kernels_[i] = Eigen::MatrixXd::Zero(width_, width_);
+			for (size_t m = 0; m < width_; m++) {
+				for (size_t n = 0; n < width_; n++) {
+					kernels_[i](m, n) = distributor(generator);
 				}
 			}
 		}
 	}
-	void filter::print_kernels() const {
-		for (size_t i = 0; i < channel; i++) {
-			std::cout << kernels[i] << "\n";
-		}
-		std::cout << bias << "\n";
-	}
 	void filter::save(const std::filesystem::path& path) const {
 		std::ofstream file(path);
 		if (file.is_open()) {
-			file << channel << " " << width << " " << bias << "\n";
-			for (int i = 0; i < channel; ++i) {
-				for (int row = 0; row < width; ++row) {
-					for (int col = 0; col < width; ++col) {
-						file << kernels[i](row, col) << " ";
+			file << channel_ << " " << width_ << " " << bias_ << "\n";
+			for (int i = 0; i < channel_; ++i) {
+				for (int row = 0; row < width_; ++row) {
+					for (int col = 0; col < width_; ++col) {
+						file << kernels_[i](row, col) << " ";
 					}
 					file << "\n";
 				}
@@ -404,21 +311,22 @@ namespace chr {
 	void filter::load(const std::filesystem::path& path) {
 		std::ifstream file(path);
 		if (file.is_open()) {
-			file >> channel >> width >> bias;
-			kernels.resize(channel);
-			for (int i = 0; i < channel; ++i) {
-				kernels[i] = Eigen::MatrixXd::Zero(width, width);
-				for (int row = 0; row < width; ++row) {
-					for (int col = 0; col < width; ++col) {
-						file >> kernels[i](row, col);
+			file >> channel_ >> width_ >> bias_;
+			kernels_.resize(channel_);
+			for (int i = 0; i < channel_; ++i) {
+				kernels_[i] = Eigen::MatrixXd::Zero(width_, width_);
+				for (int row = 0; row < width_; ++row) {
+					for (int col = 0; col < width_; ++col) {
+						file >> kernels_[i](row, col);
 					}
 				}
 			}
 			file.close();
 		}
 	}
+
 	std::vector<Eigen::MatrixXd> pool_layer::forward(const std::vector<Eigen::MatrixXd>& input) {
-		input_ = padding(input, padding_, 0.0);
+		input_ = preprocess::padding(input, padding_, 0.0);
 		feature_map_.clear();
 		record_.clear();
 		for (const auto& channel : input_) {
@@ -521,6 +429,154 @@ namespace chr {
 		}
 		return result;
 	}
+
+	convolve_layer::convolve_layer(size_t in_channel, size_t kernel_size, size_t out_channel, size_t padding, size_t stride, activation_function_type activate_type)
+		: in_channel_(in_channel), kernel_size_(kernel_size), out_channel_(out_channel), padding_(padding), stride_(stride), afunc_(activate_type) {
+		for (size_t i = 0; i < out_channel; ++i) {
+			filters_.emplace_back(in_channel, kernel_size);
+			filters_.back().initialize_He(in_channel * kernel_size * kernel_size);
+		}
+	}
+	std::vector<Eigen::MatrixXd> convolve_layer::forward(const std::vector<Eigen::MatrixXd>& input) {
+		input_ = preprocess::padding(input, padding_, 0.0);
+		feature_map_.clear();
+		d_feature_map_.clear();
+		for (auto& filter : filters_) {
+			long output_rows = (input_[0].rows() - kernel_size_) / stride_ + 1;
+			long output_cols = (input_[0].cols() - kernel_size_) / stride_ + 1;
+			Eigen::MatrixXd channel_result = Eigen::MatrixXd::Zero(output_rows, output_cols);
+			for (size_t i = 0; i < in_channel_; ++i) {
+				Eigen::MatrixXd conv_result = convolve(input_[i], filter.kernels_[i], stride_);
+				channel_result += conv_result;
+			}
+			channel_result.array() += filter.bias_;
+			d_feature_map_.push_back(channel_result.unaryExpr([this](double x) { return afunc_[x]; }));
+			feature_map_.push_back(channel_result.unaryExpr([this](double x) { return afunc_(x); }));
+		}
+		return feature_map_;
+	}
+	std::vector<Eigen::MatrixXd> convolve_layer::backward(const std::vector<Eigen::MatrixXd>& loss, bool is_last_conv) {
+		std::vector<Eigen::MatrixXd> propagated_loss;
+		if (!is_last_conv) {
+			propagated_loss = apply_activation_derivative(loss);
+		}
+		else {
+			propagated_loss = loss;
+		}
+		std::vector<Eigen::MatrixXd> input_loss(in_channel_, Eigen::MatrixXd::Zero(input_[0].rows(), input_[0].cols()));
+		for (size_t i = 0; i < out_channel_; ++i) {
+			for (size_t j = 0; j < in_channel_; ++j) {
+				Eigen::MatrixXd rotated_kernel = filters_[i].kernels_[j].reverse();
+				size_t pad_size = kernel_size_ - 1;
+				std::vector<Eigen::MatrixXd> single_loss_vec = { propagated_loss[i] };
+				auto padded_vec = preprocess::padding(single_loss_vec, pad_size, 0.0);
+				if (!padded_vec.empty() &&
+					padded_vec[0].rows() >= rotated_kernel.rows() &&
+					padded_vec[0].cols() >= rotated_kernel.cols()) {
+					Eigen::MatrixXd conv_result = convolve(padded_vec[0], rotated_kernel, 1);
+					if (conv_result.rows() == input_loss[j].rows() &&
+						conv_result.cols() == input_loss[j].cols()) {
+						input_loss[j] += conv_result;
+					}
+					else {
+						// throw std::runtime_error("卷积反向传播中卷积结果维度不匹配");
+					}
+				}
+			}
+		}
+		return remove_padding(input_loss, padding_);
+	}
+	void convolve_layer::weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& loss) {
+		if (loss.size() != out_channel_) {
+			// throw std::runtime_error("损失大小与输出通道数不匹配");
+			return;
+		}
+		if (input_.size() != in_channel_) {
+			// throw std::runtime_error("输入大小与输入通道数不匹配");
+			return;
+		}
+		for (size_t i = 0; i < out_channel_; ++i) {
+			if (i >= loss.size()) {
+				// throw std::runtime_error("损失索引超出范围");
+				continue;
+			}
+			for (size_t j = 0; j < in_channel_; ++j) {
+				if (j >= input_.size()) {
+					// throw std::runtime_error("输入索引超出范围");
+					continue;
+				}
+				if (i >= filters_.size()) {
+					// throw std::runtime_error("滤波器索引超出范围");
+					continue;
+				}
+				if (j >= filters_[i].kernels_.size()) {
+					// throw std::runtime_error("卷积核索引超出范围");
+					continue;
+				}
+				try {
+					Eigen::MatrixXd grad = compute_weight_gradient(input_[j], loss[i]);
+					filters_[i].kernels_[j] -= learning_rate * grad;
+				}
+				catch (const std::exception& e) {
+					throw std::runtime_error(std::string("计算权重梯度时出错: ") + e.what());
+				}
+			}
+
+			double bias_grad = loss[i].sum();
+			filters_[i].bias_ -= learning_rate * bias_grad;
+		}
+	}
+	void convolve_layer::save(const std::filesystem::path& path) const {
+		for (size_t i = 0; i < filters_.size(); ++i) {
+			filters_[i].save(path / ("filter_" + std::to_string(i) + ".txt"));
+		}
+	}
+	void convolve_layer::load(const std::filesystem::path& path) {
+		for (size_t i = 0; i < filters_.size(); ++i) {
+			filters_[i].load(path / ("filter_" + std::to_string(i) + ".txt"));
+		}
+	}
+	Eigen::MatrixXd convolve_layer::convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride) const {
+		if (input.rows() < kernel.rows() || input.cols() < kernel.cols()) {
+			throw std::invalid_argument("输入维度小于卷积核维度");
+		}
+		long output_rows = static_cast<long>((input.rows() - kernel.rows()) / stride) + 1;
+		long output_cols = static_cast<long>((input.cols() - kernel.cols()) / stride) + 1;
+		if (output_rows <= 0 || output_cols <= 0) {
+			throw std::invalid_argument("卷积后输出维度无效");
+		}
+		Eigen::MatrixXd result = Eigen::MatrixXd::Zero(output_rows, output_cols);
+		Eigen::Map<const Eigen::VectorXd> kernel_flat(kernel.data(), kernel.size());
+		for (long i = 0; i < output_rows; i++) {
+			for (long j = 0; j < output_cols; j++) {
+				long start_row = i * stride;
+				long start_col = j * stride;
+				if (start_row + kernel.rows() <= input.rows() &&
+					start_col + kernel.cols() <= input.cols()) {
+					Eigen::MatrixXd block = input.block(start_row, start_col, kernel.rows(), kernel.cols());
+					Eigen::Map<const Eigen::VectorXd> block_flat(block.data(), block.size());
+					result(i, j) = block_flat.dot(kernel_flat);
+				}
+			}
+		}
+		return result;
+	}
+	std::vector<Eigen::MatrixXd> convolve_layer::apply_activation_derivative(const std::vector<Eigen::MatrixXd>& loss) {
+		std::vector<Eigen::MatrixXd> result;
+		for (size_t i = 0; i < loss.size(); ++i) {
+			result.push_back(loss[i].cwiseProduct(d_feature_map_[i]));
+		}
+		return result;
+	}
+	std::vector<Eigen::MatrixXd> convolve_layer::remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding) {
+		if (padding == 0) return input;
+		std::vector<Eigen::MatrixXd> result;
+		for (const auto& matrix : input) {
+			result.push_back(matrix.block(padding, padding, matrix.rows() - 2 * padding, matrix.cols() - 2 * padding));
+		}
+		return result;
+	}
+
 	Eigen::VectorXd full_connect_layer::forward(const Eigen::VectorXd& input) {
 		input_ = input;
 		feature_vector_ = weights_ * input_ + biases_;
@@ -614,127 +670,7 @@ namespace chr {
 			biases_(i) = distribution(generator);
 		}
 	}
-	convolve_layer::convolve_layer(size_t in_channel, size_t kernel_size, size_t out_channel, size_t padding, size_t stride, activation_function_type activate_type)
-		: in_channel_(in_channel), kernel_size_(kernel_size), out_channel_(out_channel), padding_(padding), stride_(stride), afunc_(activate_type) {
-		for (size_t i = 0; i < out_channel; ++i) {
-			filters_.emplace_back(in_channel, kernel_size);
-			filters_.back().initialize_He(in_channel * kernel_size * kernel_size);
-		}
-	}
-	std::vector<Eigen::MatrixXd> convolve_layer::forward(const std::vector<Eigen::MatrixXd>& input) {
-		input_ = padding(input, padding_, 0.0);
-		feature_map_.clear();
-		d_feature_map_.clear();
-		for (auto& filter : filters_) {
-			long output_rows = (input_[0].rows() - kernel_size_) / stride_ + 1;
-			long output_cols = (input_[0].cols() - kernel_size_) / stride_ + 1;
-			Eigen::MatrixXd channel_result = Eigen::MatrixXd::Zero(output_rows, output_cols);
-			for (size_t i = 0; i < in_channel_; ++i) {
-				Eigen::MatrixXd conv_result = convolve(input_[i], filter.kernels[i], stride_);
-				channel_result += conv_result;
-			}
-			channel_result.array() += filter.bias;
-			d_feature_map_.push_back(channel_result.unaryExpr([this](double x) { return afunc_[x]; }));
-			feature_map_.push_back(channel_result.unaryExpr([this](double x) { return afunc_(x); }));
-		}
-		return feature_map_;
-	}
-	std::vector<Eigen::MatrixXd> convolve_layer::backward(const std::vector<Eigen::MatrixXd>& loss, bool is_last_conv) {
-		std::vector<Eigen::MatrixXd> propagated_loss;
-		if (!is_last_conv) {
-			propagated_loss = apply_activation_derivative(loss);
-		}
-		else {
-			propagated_loss = loss;
-		}
-		std::vector<Eigen::MatrixXd> input_loss(in_channel_, Eigen::MatrixXd::Zero(input_[0].rows(), input_[0].cols()));
-		for (size_t i = 0; i < out_channel_; ++i) {
-			for (size_t j = 0; j < in_channel_; ++j) {
-				Eigen::MatrixXd rotated_kernel = filters_[i].kernels[j].reverse();
-				size_t pad_size = kernel_size_ - 1;
-				std::vector<Eigen::MatrixXd> single_loss_vec = { propagated_loss[i] };
-				auto padded_vec = padding(single_loss_vec, pad_size, 0.0);
-				if (!padded_vec.empty() &&
-					padded_vec[0].rows() >= rotated_kernel.rows() &&
-					padded_vec[0].cols() >= rotated_kernel.cols()) {
-					Eigen::MatrixXd conv_result = convolve(padded_vec[0], rotated_kernel, 1);
-					if (conv_result.rows() == input_loss[j].rows() &&
-						conv_result.cols() == input_loss[j].cols()) {
-						input_loss[j] += conv_result;
-					}
-					else {
-						// throw std::runtime_error("卷积反向传播中卷积结果维度不匹配");
-					}
-				}
-			}
-		}
-		return remove_padding(input_loss, padding_);
-	}
-	void convolve_layer::weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& loss) {
-		if (loss.size() != out_channel_) {
-			// throw std::runtime_error("损失大小与输出通道数不匹配");
-			return;
-		}
-		if (input_.size() != in_channel_) {
-			// throw std::runtime_error("输入大小与输入通道数不匹配");
-			return;
-		}
-		for (size_t i = 0; i < out_channel_; ++i) {
-			if (i >= loss.size()) {
-				// throw std::runtime_error("损失索引超出范围");
-				continue;
-			}
-			for (size_t j = 0; j < in_channel_; ++j) {
-				if (j >= input_.size()) {
-					// throw std::runtime_error("输入索引超出范围");
-					continue;
-				}
-				if (i >= filters_.size()) {
-					// throw std::runtime_error("滤波器索引超出范围");
-					continue;
-				}
-				if (j >= filters_[i].kernels.size()) {
-					// throw std::runtime_error("卷积核索引超出范围");
-					continue;
-				}
-				try {
-					Eigen::MatrixXd grad = compute_weight_gradient(input_[j], loss[i]);
-					filters_[i].kernels[j] -= learning_rate * grad;
-				}
-				catch (const std::exception& e) {
-					throw std::runtime_error(std::string("计算权重梯度时出错: ") + e.what());
-				}
-			}
 
-			double bias_grad = loss[i].sum();
-			filters_[i].bias -= learning_rate * bias_grad;
-		}
-	}
-	void convolve_layer::save(const std::filesystem::path& path) const {
-		for (size_t i = 0; i < filters_.size(); ++i) {
-			filters_[i].save(path / ("filter_" + std::to_string(i) + ".txt"));
-		}
-	}
-	void convolve_layer::load(const std::filesystem::path& path) {
-		for (size_t i = 0; i < filters_.size(); ++i) {
-			filters_[i].load(path / ("filter_" + std::to_string(i) + ".txt"));
-		}
-	}
-	std::vector<Eigen::MatrixXd> convolve_layer::apply_activation_derivative(const std::vector<Eigen::MatrixXd>& loss) {
-		std::vector<Eigen::MatrixXd> result;
-		for (size_t i = 0; i < loss.size(); ++i) {
-			result.push_back(loss[i].cwiseProduct(d_feature_map_[i]));
-		}
-		return result;
-	}
-	std::vector<Eigen::MatrixXd> convolve_layer::remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding) {
-		if (padding == 0) return input;
-		std::vector<Eigen::MatrixXd> result;
-		for (const auto& matrix : input) {
-			result.push_back(matrix.block(padding, padding, matrix.rows() - 2 * padding, matrix.cols() - 2 * padding));
-		}
-		return result;
-	}
 	le_net5::le_net5() : conv1_(1, 5, 6, 2, 1, activation_function_type::lrelu), pool1_(2, 2), conv2_(6, 5, 16, 0, 1, activation_function_type::lrelu), pool2_(2, 2),
 		fc1_(400, 120, activation_function_type::lrelu), fc2_(120, 84, activation_function_type::lrelu), fc3_(84, 10, activation_function_type::lrelu) {
 	}
@@ -753,7 +689,7 @@ namespace chr {
 		fc3_.forward(fc2_.feature_vector());
 		return fc3_.feature_vector();
 	}
-	double le_net5::train(const std::vector<std::vector<Eigen::MatrixXd>>& dataset, const std::vector<int>& labels, size_t epochs, double learning_rate) {
+	double le_net5::train(const std::vector<std::vector<Eigen::MatrixXd>>& dataset, const std::vector<short>& labels, size_t epochs, double learning_rate) {
 		auto total_start_time = std::chrono::high_resolution_clock::now();
 		double sum_accuracy = 0.0;
 		std::cout << "本次数据：\n";

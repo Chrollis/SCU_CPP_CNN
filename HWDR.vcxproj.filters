@@ -18,15 +18,12 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="chr_cnn.hpp">
-      <Filter>头文件</Filter>
-    </ClCompile>
     <ClCompile Include="chr_cnn.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ui_form.hpp">
+    <ClInclude Include="chr_cnn.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

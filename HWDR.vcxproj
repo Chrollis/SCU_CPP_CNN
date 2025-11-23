@@ -141,11 +141,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="chr_cnn.cpp" />
-    <ClCompile Include="chr_cnn.hpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ui_form.hpp" />
+    <ClInclude Include="chr_cnn.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

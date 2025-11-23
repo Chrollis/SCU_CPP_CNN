@@ -1,33 +1,27 @@
 #include "chr_cnn.hpp"
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <vector>
-
-static void preprocess() {
-    std::cout << "正在预处理MNIST数据..." << std::endl;
-    chr::train_data(60000);
-}
 
 int main() {
     try {
         unsigned short size;
         double target;
+        size_t train, test;
         std::cout << "输入Batch大小：";
         std::cin >> size;
         std::cout << "输入目标准确率(%)：";
         std::cin >> target;
-        chr::test_data(400);
+        std::cout << "输入训练总量：";
+        std::cin >> train;
+        std::cout << "输入测试总量：";
+        std::cin >> test;
         std::cout << "正在读取标签..." << std::endl;
-        auto train_labels = chr::read_labels("MNIST_train_data/label.txt", size);
-        auto test_labels = chr::read_labels("MNIST_test_data/label.txt");
-        chr::data_loader loader;
+        auto train_labels = chr::data_loader::mnist_label_batches("MNIST_train_data/label.txt", train, size);
+        auto test_labels = chr::data_loader::mnist_label_batches("MNIST_test_data/label.txt", test, size);
         std::cout << "正在加载训练数据..." << std::endl;
-        auto train_batches = loader.build_batches_from_directory("MNIST_train_data", size);
+        auto train_batches = chr::data_loader::mnist_image_batches_from_directory("MNIST_train_data", train, size);
         std::cout << "正在加载测试数据..." << std::endl;
-        auto test_batches = loader.build_batch_from_directory("MNIST_test_data");
+        auto test_batches = chr::data_loader::mnist_image_batches_from_directory("MNIST_test_data", test, size);
         if (train_batches.size() != train_labels.size()) {
-            std::cout << "警告: 训练数据数量(" << train_batches.size() << ")与标签数量(" << train_labels.size() << ")不匹配" << std::endl; 
+            std::cout << "警告: 训练数据数量(" << train_batches.size() << ")与标签数量(" << train_labels.size() << ")不匹配" << std::endl;
             size_t min_size = std::min(train_batches.size(), train_labels.size());
             train_batches.resize(min_size);
             train_labels.resize(min_size);
@@ -43,7 +37,7 @@ int main() {
         std::cout << "训练轮次: " << epochs << std::endl;
         std::cout << "学习率: " << learning_rate << std::endl;
         double accuracy = 0.0;
-        do{
+        do {
             static size_t k = 0;
             model.train(train_batches[k], train_labels[k], epochs, learning_rate);
             k = (++k) % train_labels.size();
@@ -54,16 +48,18 @@ int main() {
             std::cout << "在测试集上评估..." << std::endl;
             size_t correct = 0;
             size_t test_size = std::min(test_batches.size(), test_labels.size());
-            for (size_t i = 0; i < test_size; ++i) {
-                auto output = model.forward(test_batches[i]);
-                int predicted = model.predict(output);
-                if (predicted == test_labels[i]) {
-                    correct++;
+            for (size_t m = 0; m < test_size; m++) {
+                for (size_t i = 0; i < test_labels[0].size(); ++i) {
+                    auto output = model.forward(test_batches[m][i]);
+                    int predicted = model.predict(output);
+                    if (predicted == test_labels[m][i]) {
+                        correct++;
+                    }
                 }
+                double accuracy = static_cast<double>(correct) / test_size;
+                std::cout << "测试集" << m << "准确率: " << std::to_string(accuracy * 100) << "% ("
+                    << correct << "/" << test_size << ")" << std::endl;
             }
-            double accuracy = static_cast<double>(correct) / test_size;
-            std::cout << "测试集准确率: " << std::to_string(accuracy * 100) << "% ("
-                << correct << "/" << test_size << ")" << std::endl;
         }
         std::cout << "所有操作完成!" << std::endl;
     }
