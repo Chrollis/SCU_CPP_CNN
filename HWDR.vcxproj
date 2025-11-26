@@ -151,6 +151,8 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mnist_data.cpp" />
     <ClCompile Include="pool_layer.cpp" />
+    <ClCompile Include="ui_form.cpp" />
+    <ClCompile Include="vgg16.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="activation_function.hpp" />
@@ -159,9 +161,10 @@
     <ClInclude Include="full_connect_layer.hpp" />
     <ClInclude Include="image_process.hpp" />
     <ClInclude Include="le_net5.hpp" />
-    <ClInclude Include="main.hpp" />
     <ClInclude Include="mnist_data.hpp" />
     <ClInclude Include="pool_layer.hpp" />
+    <ClInclude Include="ui_form.hpp" />
+    <ClInclude Include="vgg16.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

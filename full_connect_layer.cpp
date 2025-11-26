@@ -3,6 +3,11 @@
 #include <fstream>
 
 namespace chr {
+	full_connect_layer::full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type) 
+		: in_size_(in_size), out_size_(out_size), 
+		afunc_(activate_type) { 
+		initialize_weights(); 
+	}
 	Eigen::VectorXd full_connect_layer::forward(const Eigen::VectorXd& input) {
 		input_ = input;
 		// œﬂ–‘º∆À„£∫output = weights * input + biases

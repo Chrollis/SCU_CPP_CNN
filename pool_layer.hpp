@@ -18,7 +18,7 @@ namespace chr {
 		std::vector<Eigen::MatrixXd> feature_map_; // 池化后的特征图
 		std::vector<Eigen::MatrixXd> record_; // 记录最大池化的位置(用于反向传播)
 	public:
-		pool_layer(size_t core_size, size_t stride, pooling_type type = pooling_type::max) : core_size_(core_size), stride_(stride), type_(type) {}
+		pool_layer(size_t core_size, size_t stride, pooling_type type = pooling_type::max);
 		std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
 		std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& gradient);
 	private:

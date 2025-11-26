@@ -1,5 +1,5 @@
-#ifndef LE_NET5_HPP
-#define LE_NET5_HPP
+#ifndef VGG16_HPP
+#define VGG16_HPP
 
 #include "mnist_data.hpp"
 #include "convolve_layer.hpp"
@@ -7,18 +7,38 @@
 #include "full_connect_layer.hpp"
 
 namespace chr {
-	class le_net5 {
+	class vgg16 {
 	private:
-		// 网络层定义(LeNet-5结构)
-		convolve_layer conv1_; // 第一卷积层
-		pool_layer pool1_; // 第一池化层
-		convolve_layer conv2_; // 第二卷积层  
-		pool_layer pool2_; // 第二池化层
-		full_connect_layer fc1_; // 第一全连接层
-		full_connect_layer fc2_; // 第二全连接层
-		full_connect_layer fc3_; // 第三全连接层(输出层)
+		// 网络层定义(VGG16结构)
+		// 块 1
+		convolve_layer conv1_;
+		convolve_layer conv2_;
+		pool_layer pool1_;
+		// 块 2
+		convolve_layer conv3_;
+		convolve_layer conv4_;
+		pool_layer pool2_;
+		// 块 3
+		convolve_layer conv5_;
+		convolve_layer conv6_;
+		convolve_layer conv7_;
+		pool_layer pool3_;
+		// 块 4
+		convolve_layer conv8_;
+		convolve_layer conv9_;
+		convolve_layer conv10_;
+		pool_layer pool4_;
+		// 块 5
+		convolve_layer conv11_;
+		convolve_layer conv12_;
+		convolve_layer conv13_;
+		pool_layer pool5_;
+		// 分类器
+		full_connect_layer fc1_;
+		full_connect_layer fc2_;
+		full_connect_layer fc3_;
 	public:
-		le_net5();
+		vgg16();
 		Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input);
 		std::vector<Eigen::MatrixXd> backward(size_t label, double learning_rate);
 		double train(const std::vector<mnist_data>& dataset, size_t epochs, double learning_rate, bool show_detail = 0);
@@ -32,4 +52,4 @@ namespace chr {
 	};
 }
 
-#endif // !LE_NET5_HPP
+#endif // !VGG16_HPP

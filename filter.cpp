@@ -3,6 +3,10 @@
 #include <fstream>
 
 namespace chr {
+	filter::filter(size_t channels, size_t core_size) 
+		:core_size_(core_size), channels_(channels) { 
+		initialize_gausz(0.01); // 默认使用高斯初始化
+	}
 	// 高斯初始化
 	void filter::initialize_gausz(double stddev) {
 		kernels.resize(channels_);

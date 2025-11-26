@@ -11,8 +11,8 @@ namespace chr {
 		Eigen::MatrixXd image_; // 28x28的图像矩阵，像素值归一化为0或1
 		size_t label_; // 数字标签(0-9)
 	public:
-		mnist_data(const Eigen::MatrixXd& image, size_t label) :image_(image), label_(label) { ; }
-		mnist_data(Eigen::MatrixXd&& image, size_t label) :image_(image), label_(label) { ; }
+		mnist_data(const Eigen::MatrixXd& image, size_t label);
+		mnist_data(Eigen::MatrixXd&& image, size_t label);
 		const Eigen::MatrixXd& image() const { return image_; } // 获取图像矩阵
 		cv::Mat cv_image() const { return image_process::matrix_to_image(image_); } // 转换为OpenCV图像格式
 		size_t label() const { return label_; } // 获取标签

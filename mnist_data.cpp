@@ -2,6 +2,12 @@
 #include <fstream>
 
 namespace chr {
+	mnist_data::mnist_data(const Eigen::MatrixXd& image, size_t label) 
+		:image_(image), label_(label) {
+	}
+	mnist_data::mnist_data(Eigen::MatrixXd&& image, size_t label) 
+		: image_(image), label_(label) {
+	}
 	bool mnist_data::is_legal() const {
 		if (image_.rows() != 28 || image_.cols() != 28) return 0; // ¼ì²éÊÇ·ñÎª28x28³ß´ç
 		return 1;

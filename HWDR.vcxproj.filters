@@ -42,15 +42,18 @@
     <ClCompile Include="le_net5.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ui_form.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="vgg16.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mnist_data.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="image_process.hpp">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="main.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="activation_function.hpp">
@@ -69,6 +72,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="le_net5.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_form.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="vgg16.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

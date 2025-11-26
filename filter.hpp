@@ -14,7 +14,7 @@ namespace chr {
 		double bias; // 偏置项
 		std::vector<Eigen::MatrixXd> kernels; // 卷积核矩阵集合
 	public:
-		filter(size_t channels, size_t core_size) :core_size_(core_size), channels_(channels) { initialize_gausz(0.01); } // 默认使用高斯初始化
+		filter(size_t channels, size_t core_size); 
 		void initialize_gausz(double stddev); // 高斯初始化
 		void initialize_xavier(size_t input_size); // Xavier初始化
 		void initialize_He(size_t input_size); // He初始化

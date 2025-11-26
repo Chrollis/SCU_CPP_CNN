@@ -1,6 +1,10 @@
 #include "pool_layer.hpp"
 
 namespace chr {
+	pool_layer::pool_layer(size_t core_size, size_t stride, pooling_type type) 
+		: core_size_(core_size), 
+		stride_(stride), type_(type) {
+	}
 	std::vector<Eigen::MatrixXd> pool_layer::forward(const std::vector<Eigen::MatrixXd>& input) {
 		input_ = input;
 		feature_map_.clear();
@@ -34,8 +38,8 @@ namespace chr {
 		return next_gradient;
 	}
 	void pool_layer::max_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, Eigen::MatrixXd& record) const {
-		for (size_t i = 0; i < output.rows(); ++i) {
-			for (size_t j = 0; j < output.cols(); ++j) {
+		for (size_t i = 0; i < static_cast<size_t>(output.rows()); ++i) {
+			for (size_t j = 0; j < static_cast<size_t>(output.cols()); ++j) {
 				double max = std::numeric_limits<double>::lowest();
 				size_t row = 0, col = 0;
 				// 在池化窗口内寻找最大值
@@ -55,9 +59,9 @@ namespace chr {
 		}
 	}
 	void pool_layer::average_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output) const {
-		double divisor = core_size_ * core_size_;
-		for (size_t i = 0; i < output.rows(); ++i) {
-			for (size_t j = 0; j < output.cols(); ++j) {
+		double divisor = static_cast<double>(core_size_ * core_size_);
+		for (size_t i = 0; i < static_cast<size_t>(output.rows()); ++i) {
+			for (size_t j = 0; j < static_cast<size_t>(output.cols()); ++j) {
 				double sum = 0.0;
 				// 计算池化窗口内所有元素的平均值
 				for (size_t m = 0; m < core_size_; ++m) {
@@ -71,8 +75,8 @@ namespace chr {
 	}
 	Eigen::MatrixXd pool_layer::max_backward(const Eigen::MatrixXd& gradient, const Eigen::MatrixXd& record) const {
 		Eigen::MatrixXd next_gradient = Eigen::MatrixXd::Zero(input_[0].rows(), input_[0].cols());
-		for (size_t i = 0; i < gradient.rows(); ++i) {
-			for (size_t j = 0; j < gradient.cols(); ++j) {
+		for (size_t i = 0; i < static_cast<size_t>(gradient.rows()); ++i) {
+			for (size_t j = 0; j < static_cast<size_t>(gradient.cols()); ++j) {
 				for (size_t m = 0; m < core_size_; ++m) {
 					for (size_t n = 0; n < core_size_; ++n) {
 						size_t row = i * stride_ + m;
@@ -87,9 +91,9 @@ namespace chr {
 	}
 	Eigen::MatrixXd pool_layer::average_backward(const Eigen::MatrixXd& gradient) {
 		Eigen::MatrixXd next_gradient = Eigen::MatrixXd::Zero(input_[0].rows(), input_[0].cols());
-		double divisor = core_size_ * core_size_;
-		for (size_t i = 0; i < gradient.rows(); ++i) {
-			for (size_t j = 0; j < gradient.cols(); ++j) {
+		double divisor = static_cast<double>(core_size_ * core_size_);
+		for (size_t i = 0; i < static_cast<size_t>(gradient.rows()); ++i) {
+			for (size_t j = 0; j < static_cast<size_t>(gradient.cols()); ++j) {
 				double avg = gradient(i, j) / divisor;
 				for (size_t m = 0; m < core_size_; ++m) {
 					for (size_t n = 0; n < core_size_; ++n) {

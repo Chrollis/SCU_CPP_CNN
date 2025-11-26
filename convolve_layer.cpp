@@ -102,8 +102,8 @@ namespace chr {
 		Eigen::Map<const Eigen::VectorXd> kernel_flat(kernel.data(), kernel.size());
 		for (long i = 0; i < output_rows; i++) {
 			for (long j = 0; j < output_cols; j++) {
-				long start_row = i * stride;
-				long start_col = j * stride;
+				long start_row = i * static_cast<long>(stride);
+				long start_col = j * static_cast<long>(stride);
 				if (start_row + kernel.rows() <= input.rows() &&
 					start_col + kernel.cols() <= input.cols()) {
 					Eigen::MatrixXd block = input.block(start_row, start_col, kernel.rows(), kernel.cols());

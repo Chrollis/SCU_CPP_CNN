@@ -18,7 +18,7 @@ namespace chr {
 		Eigen::VectorXd feature_vector_; // 特征向量(激活后)
 		Eigen::VectorXd linear_outcome_; // 线性输出(激活前)
 	public:
-		full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu) : in_size_(in_size), out_size_(out_size), afunc_(activate_type) { initialize_weights(); }
+		full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu);
 		Eigen::VectorXd forward(const Eigen::VectorXd& input);
 		Eigen::VectorXd backward(const Eigen::VectorXd& gradient, double learning_rate, bool is_output_layer = false, size_t label = 0);
 		void weights_update(double learning_rate);

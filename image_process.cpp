@@ -1,4 +1,6 @@
 #include "image_process.hpp"
+#undef min
+#undef max
 
 namespace chr {
 	namespace image_process {
@@ -13,6 +15,33 @@ namespace chr {
 				}
 			}
 			return image;
+		}
+		// EasyX图片转OpenCV图片
+		cv::Mat easyx_to_image(const IMAGE& src) {
+			cv::Mat dst(cv::Size(src.getwidth(), src.getheight()), CV_8UC3);
+			IMAGE copy = src;
+			auto ptr = GetImageBuffer(&copy);
+			for (int i = 0; i < src.getwidth(); i++) {
+				for (int j = 0; j < src.getheight(); j++) {
+					COLORREF pixel = ptr[i + j * src.getwidth()];
+					BYTE b = GetBValue(pixel);
+					BYTE g = GetGValue(pixel);
+					BYTE r = GetRValue(pixel);
+					dst.at<cv::Vec3b>(j, i) = cv::Vec3b(r, g, b);
+				}
+			}
+			return dst;
+		}
+		IMAGE image_to_easyx(const cv::Mat& src) {
+			IMAGE dst(src.cols, src.rows);
+			auto ptr = GetImageBuffer(&dst);
+			for (int i = 0; i < src.rows; i++) {
+				for (int j = 0; j < src.cols; j++) {
+					cv::Vec3b pixel = src.at<cv::Vec3b>(j, i);
+					ptr[i + j * src.cols] = RGB(pixel[0], pixel[1], pixel[2]);
+				}
+			}
+			return dst;
 		}
 		// 处理单个数字图像：填充、缩放、二值化
 		Eigen::MatrixXd process_digit(const cv::Mat& digit_mat) {
@@ -51,11 +80,12 @@ namespace chr {
 		// 检查矩形区域是否为有效的数字区域
 		bool is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size) {
 			int min_size = static_cast<int>(std::min(image_size.width, image_size.height) * 0.1); // 最小尺寸阈值
-			return (rect.width > min_size && rect.height > min_size);
+			min_size = std::min(min_size, 28);
+			return (rect.width > min_size || rect.height > min_size);
 		}
 		// 处理整张图像，提取所有数字区域
-		std::vector<Eigen::MatrixXd> process_image(const cv::Mat& digits_mat) {
-			std::vector<Eigen::MatrixXd> digits;
+		std::vector<digit_block> process_image(const cv::Mat& digits_mat) {
+			std::vector<digit_block> digits;
 			cv::Mat processed = binarize_image(digits_mat); // 二值化
 			std::vector<std::vector<cv::Point>> contours;
 			std::vector<cv::Vec4i> hierarchy;
@@ -67,11 +97,26 @@ namespace chr {
 					cv::Mat digit_mat = processed(bounding_rect); // 提取数字区域
 					Eigen::MatrixXd digit = process_digit(digit_mat); // 处理单个数字
 					if (digit.size() > 0) {
-						digits.push_back(digit);
+						digits.push_back({ bounding_rect,digit });
 					}
 				}
 			}
 			return digits;
+		}
+		// 为图像添加标签标记（框）
+		cv::Mat labelize_image(const cv::Mat& src, const std::vector<digit_block>& blocks) {
+			cv::Mat dst = src;
+			for (size_t i = 0; i < blocks.size(); i++) {
+				int x = blocks[i].rect.x;
+				int y = blocks[i].rect.y;
+				int w = blocks[i].rect.width;
+				int h = blocks[i].rect.height;
+				dst.row(y).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
+				dst.row(y + h - 1).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
+				dst.col(x).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
+				dst.col(x + w - 1).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
+			}
+			return dst;
 		}
 		// 图像二值化处理
 		cv::Mat binarize_image(const cv::Mat& src_img) {
