@@ -35,6 +35,7 @@ A comprehensive C++ implementation of Convolutional Neural Networks for MNIST di
 ## Installation
 
 ### Pre-built Executable
+
 1. Download the latest release from the [Releases page](https://github.com/Chrollis/SCU_CPP_CNN/releases)
 2. Extract all files, maintaining the folder structure
 3. Run `GraphicsCore.exe` (Qt version) or `graphics.exe` (legacy EasyX version)
@@ -42,6 +43,7 @@ A comprehensive C++ implementation of Convolutional Neural Networks for MNIST di
 ### Building from Source
 
 #### Prerequisites
+
 - **Qt 5.15+** or **Qt 6.x**
 - **Eigen3** library for linear algebra
 - **OpenCV 4.x** for image processing
@@ -49,6 +51,7 @@ A comprehensive C++ implementation of Convolutional Neural Networks for MNIST di
 - **CMake** (recommended) or QMake
 
 #### Build Steps
+
 ```bash
 # Clone the repository
 git clone https://github.com/Chrollis/SCU_CPP_CNN.git
@@ -60,3 +63,49 @@ mkdir build && cd build
 # Configure with CMake (example)
 cmake .. -DCMAKE_PREFIX_PATH=/path/to/qt -DOpenCV_DIR=/path/to/opencv
 make -j4
+```
+
+## Quick Start Guide
+
+1. Setup Model
+- Choose **Model Type**: LeNet-5 (recommended) or VGG16
+- **Create New Model**: File → New Model or load existing `.cnn` file
+- Configure training parameters in the Model panel
+2. Prepare Data
+- Set paths to MNIST dataset files:
+ - Train Data: `train-images.idx3-ubyte`
+ - Train Labels: `train-labels.idx1-ubyte`
+ - Test Data: `t10k-images.idx3-ubyte`
+ - Test Labels: `t10k-labels.idx1-ubyte`
+3. Train Model
+- Click **Start Training** or use Train menu
+- Monitor real-time progress with accuracy and loss
+- Stop training anytime with **Stop Training**
+4. Recognize Digits
+- **Draw** on canvas or **Import** image file
+- Click **Recognize** to detect and label digits
+- **Export** recognized digits for further analysis
+
+## Configuration
+
+The application automatically saves settings to `config.ini`
+
+## Development
+
+### Key Technical Features
+
+- **Custom CNN Implementation**: All layers implemented from scratch
+- **Efficient Linear Algebra**: Eigen3 for matrix operations
+- **Image Processing**: OpenCV for digit extraction and preprocessing
+- **Multi-threading**: OpenMP support for parallel computation
+- **Binary Serialization**: Custom format for model persistence
+
+### File Formats
+
+- **Models**: `.cnn` (custom binary format with magic number 1128)
+- **Images**: PNG, JPG, JPEG, BMP
+- **MNIST Data**: IDX3/IDX1 binary formats
+
+## License
+
+This project was developed as part of **Sichuan University C++ coursework**, demonstrating complete CNN implementation from scratch.
