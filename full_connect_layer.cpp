@@ -1,82 +1,135 @@
 #include "full_connect_layer.hpp"
-#include <random>
 #include <fstream>
+#include <random>
 
 namespace chr {
-	full_connect_layer::full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type) 
-		: in_size_(in_size), out_size_(out_size), 
-		afunc_(activate_type) { 
-		initialize_weights(); 
-	}
-	Eigen::VectorXd full_connect_layer::forward(const Eigen::VectorXd& input) {
-		input_ = input;
-		// ÏßĞÔ¼ÆËã£ºoutput = weights * input + biases
-		linear_outcome_ = weights_ * input_ + biases_;
-		feature_vector_ = linear_outcome_.unaryExpr([this](double a) { return afunc_(a); });
-		return feature_vector_;
-	}
-	Eigen::VectorXd full_connect_layer::backward(const Eigen::VectorXd& gradient, double learning_rate, bool is_output_layer, size_t label) {
-		if (is_output_layer) {
-			// Èç¹ûÊÇÊä³ö²ã£¬¼ÆËã½»²æìØËğÊ§Ìİ¶È
-			Eigen::VectorXd target = Eigen::VectorXd::Zero(out_size_);
-			if (label >= 0 && label < out_size_) {
-				target(label) = 1.0; // ´´½¨one-hot±êÇ©
-			}
-			// Êä³ö²ãÌİ¶È = Ô¤²âÖµ - ÕæÊµÖµ
-			gradient_ = feature_vector_ - target;
-		}
-		else {
-			// Òş²Ø²ãÌİ¶È = ÉÏ²ãÌİ¶È ¡Á ¼¤»îº¯Êıµ¼Êı
-			gradient_ = gradient.cwiseProduct(linear_outcome_.unaryExpr([this](double a) { return afunc_[a]; }));
-		}
-		Eigen::VectorXd next_gradient = weights_.transpose() * gradient_;
-		weights_update(learning_rate);
-		return next_gradient;
-	}
-	void full_connect_layer::weights_update(double learning_rate) {
-		// È¨ÖØ¸üĞÂ£ºweights -= Ñ§Ï°ÂÊ * Ìİ¶È * ÊäÈë×ªÖÃ
-		weights_ -= learning_rate * gradient_ * input_.transpose();
-		// Æ«ÖÃ¸üĞÂ£ºbiases -= Ñ§Ï°ÂÊ * Ìİ¶È
-		biases_ -= learning_rate * gradient_;
-	}
-	void full_connect_layer::save(const std::filesystem::path& path) const {
-		std::ofstream file(path);
-		if (file.is_open()) {
-			file << in_size_ << " " << out_size_ << "\n";
-			file << weights_ << "\n";
-			file << biases_.transpose() << "\n";
-			file.close();
-		}
-	}
-	void full_connect_layer::load(const std::filesystem::path& path) {
-		std::ifstream file(path);
-		if (file.is_open()) {
-			size_t in_size, out_size;
-			file >> in_size >> out_size;
-			weights_.resize(out_size, in_size);
-			biases_.resize(out_size);
-			for (size_t i = 0; i < out_size; ++i) {
-				for (size_t j = 0; j < in_size; ++j) {
-					file >> weights_(i, j);
-				}
-			}
-			for (size_t i = 0; i < out_size; ++i) {
-				file >> biases_(i);
-			}
-			file.close();
-		}
-	}
-	void full_connect_layer::initialize_weights() {
-		weights_.resize(out_size_, in_size_);
-		biases_.resize(out_size_);
-		std::random_device rd;
-		std::default_random_engine generator(rd());
-		std::normal_distribution<double> distribution(0.0, 0.01); // Ê¹ÓÃĞ¡·½²î¸ßË¹·Ö²¼
-		for (size_t i = 0; i < out_size_; ++i) {
-			for (size_t j = 0; j < in_size_; ++j) {
-				weights_(i, j) = distribution(generator);
-			}
-			biases_(i) = distribution(generator);
-		}
-	}
+full_connect_layer::full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type)
+    : in_size_(in_size)
+    , out_size_(out_size)
+    , afunc_(activate_type)
+{
+    initialize_weights();
+}
+Eigen::VectorXd full_connect_layer::forward(const Eigen::VectorXd& input)
+{
+    input_ = input;
+    // çº¿æ€§è®¡ç®—ï¼šoutput = weights * input + biases
+    linear_outcome_ = weights_ * input_ + biases_;
+    feature_vector_ = linear_outcome_.unaryExpr([this](double a) { return afunc_(a); });
+    return feature_vector_;
+}
+Eigen::VectorXd full_connect_layer::backward(const Eigen::VectorXd& gradient, double learning_rate, bool is_output_layer, size_t label)
+{
+    if (is_output_layer) {
+        // å¦‚æœæ˜¯è¾“å‡ºå±‚ï¼Œè®¡ç®—äº¤å‰ç†µæŸå¤±æ¢¯åº¦
+        Eigen::VectorXd target = Eigen::VectorXd::Zero(out_size_);
+        if (label >= 0 && label < out_size_) {
+            target(label) = 1.0; // åˆ›å»ºone-hotæ ‡ç­¾
+        }
+        // è¾“å‡ºå±‚æ¢¯åº¦ = é¢„æµ‹å€¼ - çœŸå®å€¼
+        gradient_ = feature_vector_ - target;
+    } else {
+        // éšè—å±‚æ¢¯åº¦ = ä¸Šå±‚æ¢¯åº¦ Ã— æ¿€æ´»å‡½æ•°å¯¼æ•°
+        gradient_ = gradient.cwiseProduct(linear_outcome_.unaryExpr([this](double a) { return afunc_[a]; }));
+    }
+    Eigen::VectorXd next_gradient = weights_.transpose() * gradient_;
+    weights_update(learning_rate);
+    return next_gradient;
+}
+void full_connect_layer::weights_update(double learning_rate)
+{
+    // æƒé‡æ›´æ–°ï¼šweights -= å­¦ä¹ ç‡ * æ¢¯åº¦ * è¾“å…¥è½¬ç½®
+    weights_ -= learning_rate * gradient_ * input_.transpose();
+    // åç½®æ›´æ–°ï¼šbiases -= å­¦ä¹ ç‡ * æ¢¯åº¦
+    biases_ -= learning_rate * gradient_;
+}
+void full_connect_layer::save(const std::filesystem::path& path) const
+{
+    std::ofstream file(path);
+    if (file.is_open()) {
+        file << in_size_ << " " << out_size_ << "\n";
+        file << weights_ << "\n";
+        file << biases_.transpose() << "\n";
+        file.close();
+    }
+}
+void full_connect_layer::load(const std::filesystem::path& path)
+{
+    std::ifstream file(path);
+    if (file.is_open()) {
+        size_t in_size, out_size;
+        file >> in_size >> out_size;
+        weights_.resize(out_size, in_size);
+        biases_.resize(out_size);
+        for (size_t i = 0; i < out_size; ++i) {
+            for (size_t j = 0; j < in_size; ++j) {
+                file >> weights_(i, j);
+            }
+        }
+        for (size_t i = 0; i < out_size; ++i) {
+            file >> biases_(i);
+        }
+        file.close();
+    }
+}
+void full_connect_layer::initialize_weights()
+{
+    weights_.resize(out_size_, in_size_);
+    biases_.resize(out_size_);
+    std::random_device rd;
+    std::default_random_engine generator(rd());
+    std::normal_distribution<double> distribution(0.0, 0.01); // ä½¿ç”¨å°æ–¹å·®é«˜æ–¯åˆ†å¸ƒ
+    for (size_t i = 0; i < out_size_; ++i) {
+        for (size_t j = 0; j < in_size_; ++j) {
+            weights_(i, j) = distribution(generator);
+        }
+        biases_(i) = distribution(generator);
+    }
+}
+void full_connect_layer::save_binary(std::ostream& file) const
+{
+    // ä¿å­˜å…¨è¿æ¥å±‚åŸºæœ¬ä¿¡æ¯
+    uint32_t in_size = in_size_;
+    uint32_t out_size = out_size_;
+    file.write(reinterpret_cast<const char*>(&in_size), sizeof(in_size));
+    file.write(reinterpret_cast<const char*>(&out_size), sizeof(out_size));
+    // ä¿å­˜æƒé‡çŸ©é˜µ
+    for (size_t i = 0; i < out_size_; ++i) {
+        for (size_t j = 0; j < in_size_; ++j) {
+            double weight = weights_(i, j);
+            file.write(reinterpret_cast<const char*>(&weight), sizeof(weight));
+        }
+    }
+    // ä¿å­˜åç½®å‘é‡
+    for (size_t i = 0; i < out_size_; ++i) {
+        double bias = biases_(i);
+        file.write(reinterpret_cast<const char*>(&bias), sizeof(bias));
+    }
+}
+
+void full_connect_layer::load_binary(std::istream& file)
+{
+    // è¯»å–å…¨è¿æ¥å±‚åŸºæœ¬ä¿¡æ¯
+    uint32_t in_size, out_size;
+    file.read(reinterpret_cast<char*>(&in_size), sizeof(in_size));
+    file.read(reinterpret_cast<char*>(&out_size), sizeof(out_size));
+    // éªŒè¯å‚æ•°æ˜¯å¦åŒ¹é…
+    if (in_size != in_size_ || out_size != out_size_) {
+        throw std::runtime_error("Full connect layer parameter mismatch");
+    }
+    // è¯»å–æƒé‡çŸ©é˜µ
+    for (size_t i = 0; i < out_size_; ++i) {
+        for (size_t j = 0; j < in_size_; ++j) {
+            double weight;
+            file.read(reinterpret_cast<char*>(&weight), sizeof(weight));
+            weights_(i, j) = weight;
+        }
+    }
+    // è¯»å–åç½®å‘é‡
+    for (size_t i = 0; i < out_size_; ++i) {
+        double bias;
+        file.read(reinterpret_cast<char*>(&bias), sizeof(bias));
+        biases_(i) = bias;
+    }
+}
 }

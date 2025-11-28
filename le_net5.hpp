@@ -1,35 +1,33 @@
 #ifndef LE_NET5_HPP
 #define LE_NET5_HPP
 
-#include "mnist_data.hpp"
+#include "cnn_base.h"
 #include "convolve_layer.hpp"
-#include "pool_layer.hpp"
 #include "full_connect_layer.hpp"
+#include "pool_layer.hpp"
 
 namespace chr {
-	class le_net5 {
-	private:
-		// ÍøÂç²ã¶¨Òå(LeNet-5½á¹¹)
-		convolve_layer conv1_; // µÚÒ»¾í»ı²ã
-		pool_layer pool1_; // µÚÒ»³Ø»¯²ã
-		convolve_layer conv2_; // µÚ¶ş¾í»ı²ã  
-		pool_layer pool2_; // µÚ¶ş³Ø»¯²ã
-		full_connect_layer fc1_; // µÚÒ»È«Á¬½Ó²ã
-		full_connect_layer fc2_; // µÚ¶şÈ«Á¬½Ó²ã
-		full_connect_layer fc3_; // µÚÈıÈ«Á¬½Ó²ã(Êä³ö²ã)
-	public:
-		le_net5();
-		Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input);
-		std::vector<Eigen::MatrixXd> backward(size_t label, double learning_rate);
-		double train(const std::vector<mnist_data>& dataset, size_t epochs, double learning_rate, bool show_detail = 0);
-		size_t predict(const Eigen::VectorXd& output); // Ô¤²âº¯Êı
-		void save(const std::filesystem::path& path);
-		void load(const std::filesystem::path& path);
-	private:
-		Eigen::VectorXd flatten(const std::vector<Eigen::MatrixXd>& matrixs); // Õ¹Æ½²Ù×÷(¶àÎ¬×ªÒ»Î¬)
-		std::vector<Eigen::MatrixXd> counterflatten(const Eigen::VectorXd& vector, size_t channels, size_t rows, size_t cols); // ·´Õ¹Æ½²Ù×÷(Ò»Î¬×ª¶àÎ¬)
-		double cross_entropy_loss(const Eigen::VectorXd& output, size_t label); // ½»²æìØËğÊ§º¯Êı
-	};
+class le_net5 : public cnn_base {
+private:
+    // ç½‘ç»œå±‚å®šä¹‰(LeNet-5ç»“æ„)
+    convolve_layer conv1_; // ç¬¬ä¸€å·ç§¯å±‚
+    pool_layer pool1_; // ç¬¬ä¸€æ± åŒ–å±‚
+    convolve_layer conv2_; // ç¬¬äºŒå·ç§¯å±‚
+    pool_layer pool2_; // ç¬¬äºŒæ± åŒ–å±‚
+    full_connect_layer fc1_; // ç¬¬ä¸€å…¨è¿æ¥å±‚
+    full_connect_layer fc2_; // ç¬¬äºŒå…¨è¿æ¥å±‚
+    full_connect_layer fc3_; // ç¬¬ä¸‰å…¨è¿æ¥å±‚(è¾“å‡ºå±‚)
+
+public:
+    le_net5();
+    Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input) override;
+    std::vector<Eigen::MatrixXd> backward(size_t label, double learning_rate) override;
+    void save(const std::filesystem::path& path) override;
+    void load(const std::filesystem::path& path) override;
+    void save_binary(const std::filesystem::path& path) override;
+    void load_binary(const std::filesystem::path& path) override;
+    std::string model_type() const override { return "LeNet-5"; }
+};
 }
 
 #endif // !LE_NET5_HPP

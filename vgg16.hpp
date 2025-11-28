@@ -1,55 +1,53 @@
 #ifndef VGG16_HPP
 #define VGG16_HPP
 
-#include "mnist_data.hpp"
+#include "cnn_base.h"
 #include "convolve_layer.hpp"
-#include "pool_layer.hpp"
 #include "full_connect_layer.hpp"
+#include "pool_layer.hpp"
 
 namespace chr {
-	class vgg16 {
-	private:
-		// ÍøÂç²ã¶¨Òå(VGG16½á¹¹)
-		// ¿é 1
-		convolve_layer conv1_;
-		convolve_layer conv2_;
-		pool_layer pool1_;
-		// ¿é 2
-		convolve_layer conv3_;
-		convolve_layer conv4_;
-		pool_layer pool2_;
-		// ¿é 3
-		convolve_layer conv5_;
-		convolve_layer conv6_;
-		convolve_layer conv7_;
-		pool_layer pool3_;
-		// ¿é 4
-		convolve_layer conv8_;
-		convolve_layer conv9_;
-		convolve_layer conv10_;
-		pool_layer pool4_;
-		// ¿é 5
-		convolve_layer conv11_;
-		convolve_layer conv12_;
-		convolve_layer conv13_;
-		pool_layer pool5_;
-		// ·ÖÀàÆ÷
-		full_connect_layer fc1_;
-		full_connect_layer fc2_;
-		full_connect_layer fc3_;
-	public:
-		vgg16();
-		Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input);
-		std::vector<Eigen::MatrixXd> backward(size_t label, double learning_rate);
-		double train(const std::vector<mnist_data>& dataset, size_t epochs, double learning_rate, bool show_detail = 0);
-		size_t predict(const Eigen::VectorXd& output); // Ô¤²âº¯Êı
-		void save(const std::filesystem::path& path);
-		void load(const std::filesystem::path& path);
-	private:
-		Eigen::VectorXd flatten(const std::vector<Eigen::MatrixXd>& matrixs); // Õ¹Æ½²Ù×÷(¶àÎ¬×ªÒ»Î¬)
-		std::vector<Eigen::MatrixXd> counterflatten(const Eigen::VectorXd& vector, size_t channels, size_t rows, size_t cols); // ·´Õ¹Æ½²Ù×÷(Ò»Î¬×ª¶àÎ¬)
-		double cross_entropy_loss(const Eigen::VectorXd& output, size_t label); // ½»²æìØËğÊ§º¯Êı
-	};
+class vgg16 : public cnn_base {
+private:
+    // ç½‘ç»œå±‚å®šä¹‰(VGG16ç»“æ„)
+    // å— 1
+    convolve_layer conv1_;
+    convolve_layer conv2_;
+    pool_layer pool1_;
+    // å— 2
+    convolve_layer conv3_;
+    convolve_layer conv4_;
+    pool_layer pool2_;
+    // å— 3
+    convolve_layer conv5_;
+    convolve_layer conv6_;
+    convolve_layer conv7_;
+    pool_layer pool3_;
+    // å— 4
+    convolve_layer conv8_;
+    convolve_layer conv9_;
+    convolve_layer conv10_;
+    pool_layer pool4_;
+    // å— 5
+    convolve_layer conv11_;
+    convolve_layer conv12_;
+    convolve_layer conv13_;
+    pool_layer pool5_;
+    // åˆ†ç±»å™¨
+    full_connect_layer fc1_;
+    full_connect_layer fc2_;
+    full_connect_layer fc3_;
+
+public:
+    vgg16();
+    Eigen::VectorXd forward(const std::vector<Eigen::MatrixXd>& input) override;
+    std::vector<Eigen::MatrixXd> backward(size_t label, double learning_rate) override;
+    void save(const std::filesystem::path& path) override;
+    void load(const std::filesystem::path& path) override;
+    void save_binary(const std::filesystem::path& path) override;
+    void load_binary(const std::filesystem::path& path) override;
+    std::string model_type() const override { return "VGG16"; }
+};
 }
 
 #endif // !VGG16_HPP

@@ -2,37 +2,39 @@
 #define CONVOLVE_LAYER_HPP
 
 #include "activation_function.hpp"
-#include "image_process.hpp"
 #include "filter.hpp"
 #include <Eigen/Dense>
 #include <filesystem>
 
 namespace chr {
-	class convolve_layer {
-	private:
-		size_t in_channels_; // ÊäÈëÍ¨µÀÊı
-		size_t kernel_size_; // ¾í»ıºË³ß´ç
-		size_t out_channels_; // Êä³öÍ¨µÀÊı(¹ıÂËÆ÷ÊıÁ¿)
-		size_t padding_; // Ìî³ä´óĞ¡
-		size_t stride_; // ²½³¤
-		activation_function afunc_; // ¼¤»îº¯Êı
-		std::vector<filter> filters_; // ¹ıÂËÆ÷¼¯ºÏ
-		std::vector<Eigen::MatrixXd> input_; // ÊäÈëÊı¾İ(´øÌî³ä)
-		std::vector<Eigen::MatrixXd> feature_map_; // ÌØÕ÷Í¼(¼¤»îºó)
-		std::vector<Eigen::MatrixXd> convolve_outcome_; // ¾í»ı½á¹û(¼¤»îÇ°)
-	public:
-		convolve_layer(size_t in_channels, size_t kernel_size, size_t out_channels, size_t padding = 0, size_t stride = 1, activation_function_type activate_type = activation_function_type::relu);
-		std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
-		std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& gradient, double learning_rate, bool is_last_conv = false);
-		void weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& gradient);
-		void save(const std::filesystem::path& path) const;
-		void load(const std::filesystem::path& path);
-	private:
-		std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num = 0.0) const;
-		Eigen::MatrixXd convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride) const;
-		std::vector<Eigen::MatrixXd> apply_activation_derivative(const std::vector<Eigen::MatrixXd>& gradient); // Ó¦ÓÃ¼¤»îº¯Êıµ¼Êı
-		std::vector<Eigen::MatrixXd> remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding);
-	};
+class convolve_layer {
+private:
+    size_t in_channels_; // è¾“å…¥é€šé“æ•°
+    size_t kernel_size_; // å·ç§¯æ ¸å°ºå¯¸
+    size_t out_channels_; // è¾“å‡ºé€šé“æ•°(è¿‡æ»¤å™¨æ•°é‡)
+    size_t padding_; // å¡«å……å¤§å°
+    size_t stride_; // æ­¥é•¿
+    activation_function afunc_; // æ¿€æ´»å‡½æ•°
+    std::vector<filter> filters_; // è¿‡æ»¤å™¨é›†åˆ
+    std::vector<Eigen::MatrixXd> input_; // è¾“å…¥æ•°æ®(å¸¦å¡«å……)
+    std::vector<Eigen::MatrixXd> feature_map_; // ç‰¹å¾å›¾(æ¿€æ´»å)
+    std::vector<Eigen::MatrixXd> convolve_outcome_; // å·ç§¯ç»“æœ(æ¿€æ´»å‰)
+public:
+    convolve_layer(size_t in_channels, size_t kernel_size, size_t out_channels, size_t padding = 0, size_t stride = 1, activation_function_type activate_type = activation_function_type::relu);
+    std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
+    std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& gradient, double learning_rate, bool is_last_conv = false);
+    void weights_update(double learning_rate, const std::vector<Eigen::MatrixXd>& gradient);
+    void save(const std::filesystem::path& path) const;
+    void load(const std::filesystem::path& path);
+    void save_binary(std::ostream& file) const;
+    void load_binary(std::istream& file);
+
+private:
+    std::vector<Eigen::MatrixXd> padding(const std::vector<Eigen::MatrixXd>& input, size_t circle_num, double fill_num = 0.0) const;
+    Eigen::MatrixXd convolve(const Eigen::MatrixXd& input, const Eigen::MatrixXd& kernel, size_t stride) const;
+    std::vector<Eigen::MatrixXd> apply_activation_derivative(const std::vector<Eigen::MatrixXd>& gradient); // åº”ç”¨æ¿€æ´»å‡½æ•°å¯¼æ•°
+    std::vector<Eigen::MatrixXd> remove_padding(const std::vector<Eigen::MatrixXd>& input, size_t padding);
+};
 }
 
 #endif // !CONVOLVE_LAYER_HPP

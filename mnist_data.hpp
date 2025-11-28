@@ -1,29 +1,29 @@
 #ifndef MNIST_DATA_HPP
 #define MNIST_DATA_HPP
 
-#include <filesystem>
 #include "image_process.hpp"
+#include <filesystem>
 
 namespace chr {
-	// MNISTÊı¾İ¼¯Êı¾İÀà£¬ÓÃÓÚ´æ´¢ÊÖĞ´Êı×ÖÍ¼ÏñºÍ±êÇ©
-	class mnist_data {
-	private:
-		Eigen::MatrixXd image_; // 28x28µÄÍ¼Ïñ¾ØÕó£¬ÏñËØÖµ¹éÒ»»¯Îª0»ò1
-		size_t label_; // Êı×Ö±êÇ©(0-9)
-	public:
-		mnist_data(const Eigen::MatrixXd& image, size_t label);
-		mnist_data(Eigen::MatrixXd&& image, size_t label);
-		const Eigen::MatrixXd& image() const { return image_; } // »ñÈ¡Í¼Ïñ¾ØÕó
-		cv::Mat cv_image() const { return image_process::matrix_to_image(image_); } // ×ª»»ÎªOpenCVÍ¼Ïñ¸ñÊ½
-		size_t label() const { return label_; } // »ñÈ¡±êÇ©
-		bool is_legal() const; // ¼ì²éÊı¾İÊÇ·ñºÏ·¨(28x28³ß´ç)
-	private:
-		static unsigned swap_endian(unsigned val); // ×Ö½ÚĞò×ª»»(´ó¶Ë×ªĞ¡¶Ë)
-		static unsigned check_mnist_file(std::ifstream& mnist_images, std::ifstream& mnist_labels); // ÑéÖ¤MNISTÎÄ¼ş¸ñÊ½
-	public:
-		// ´ÓMNISTÎÄ¼ş¶ÁÈ¡Êı¾İ
-		static std::vector<mnist_data> obtain_data(const std::filesystem::path& mnist_image_path, const std::filesystem::path& mnist_label_path, size_t offset = 0, size_t size = 60000);
-	};
+// MNISTæ•°æ®é›†æ•°æ®ç±»ï¼Œç”¨äºå­˜å‚¨æ‰‹å†™æ•°å­—å›¾åƒå’Œæ ‡ç­¾
+class mnist_data {
+private:
+    Eigen::MatrixXd image_; // 28x28çš„å›¾åƒçŸ©é˜µï¼Œåƒç´ å€¼å½’ä¸€åŒ–ä¸º0æˆ–1
+    size_t label_; // æ•°å­—æ ‡ç­¾(0-9)
+public:
+    mnist_data(const Eigen::MatrixXd& image, size_t label);
+    mnist_data(Eigen::MatrixXd&& image, size_t label);
+    const Eigen::MatrixXd& image() const { return image_; } // è·å–å›¾åƒçŸ©é˜µ
+    cv::Mat cv_image() const { return image_process::eigen_matrix_to_cv_mat(image_); } // è½¬æ¢ä¸ºOpenCVå›¾åƒæ ¼å¼
+    size_t label() const { return label_; } // è·å–æ ‡ç­¾
+    bool is_legal() const; // æ£€æŸ¥æ•°æ®æ˜¯å¦åˆæ³•(28x28å°ºå¯¸)
+private:
+    static unsigned swap_endian(unsigned val); // å­—èŠ‚åºè½¬æ¢(å¤§ç«¯è½¬å°ç«¯)
+    static unsigned check_mnist_file(std::ifstream& mnist_images, std::ifstream& mnist_labels); // éªŒè¯MNISTæ–‡ä»¶æ ¼å¼
+public:
+    // ä»MNISTæ–‡ä»¶è¯»å–æ•°æ®
+    static std::vector<mnist_data> obtain_data(const std::filesystem::path& mnist_image_path, const std::filesystem::path& mnist_label_path, size_t offset = 0, size_t size = 60000);
+};
 }
 
 #endif // !MNIST_DATA_HPP

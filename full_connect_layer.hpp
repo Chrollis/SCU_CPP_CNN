@@ -2,37 +2,40 @@
 #define FULL_CONNECT_LAYER_HPP
 
 #include "activation_function.hpp"
-#include <filesystem>
 #include <Eigen/Dense>
+#include <filesystem>
 
 namespace chr {
-	class full_connect_layer {
-	private:
-		size_t in_size_; // ÊäÈëÎ¬¶È
-		size_t out_size_; // Êä³öÎ¬¶È
-		activation_function afunc_; // ¼¤»îº¯Êı
-		Eigen::MatrixXd weights_; // È¨ÖØ¾ØÕó
-		Eigen::VectorXd biases_; // Æ«ÖÃÏòÁ¿
-		Eigen::VectorXd input_; // ÊäÈëÊı¾İ
-		Eigen::VectorXd gradient_; // Ìİ¶È
-		Eigen::VectorXd feature_vector_; // ÌØÕ÷ÏòÁ¿(¼¤»îºó)
-		Eigen::VectorXd linear_outcome_; // ÏßĞÔÊä³ö(¼¤»îÇ°)
-	public:
-		full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu);
-		Eigen::VectorXd forward(const Eigen::VectorXd& input);
-		Eigen::VectorXd backward(const Eigen::VectorXd& gradient, double learning_rate, bool is_output_layer = false, size_t label = 0);
-		void weights_update(double learning_rate);
-		void save(const std::filesystem::path& path) const;
-		void load(const std::filesystem::path& path);
-	private:
-		void initialize_weights();
-	};
+class full_connect_layer {
+private:
+    size_t in_size_; // è¾“å…¥ç»´åº¦
+    size_t out_size_; // è¾“å‡ºç»´åº¦
+    activation_function afunc_; // æ¿€æ´»å‡½æ•°
+    Eigen::MatrixXd weights_; // æƒé‡çŸ©é˜µ
+    Eigen::VectorXd biases_; // åç½®å‘é‡
+    Eigen::VectorXd input_; // è¾“å…¥æ•°æ®
+    Eigen::VectorXd gradient_; // æ¢¯åº¦
+    Eigen::VectorXd feature_vector_; // ç‰¹å¾å‘é‡(æ¿€æ´»å)
+    Eigen::VectorXd linear_outcome_; // çº¿æ€§è¾“å‡º(æ¿€æ´»å‰)
+public:
+    full_connect_layer(size_t in_size, size_t out_size, activation_function_type activate_type = activation_function_type::relu);
+    Eigen::VectorXd forward(const Eigen::VectorXd& input);
+    Eigen::VectorXd backward(const Eigen::VectorXd& gradient, double learning_rate, bool is_output_layer = false, size_t label = 0);
+    void weights_update(double learning_rate);
+    void save(const std::filesystem::path& path) const;
+    void load(const std::filesystem::path& path);
+    void save_binary(std::ostream& file) const;
+    void load_binary(std::istream& file);
 
-	// Example:
-	// input: 400 * 1
-	// output : 120 * 1
-	// weights: 120 * 400
-	// bias: 120 * 1
+private:
+    void initialize_weights();
+};
+
+// Example:
+// input: 400 * 1
+// output : 120 * 1
+// weights: 120 * 400
+// bias: 120 * 1
 }
 
 #endif // !FULL_CONNECT_LAYER_HPP

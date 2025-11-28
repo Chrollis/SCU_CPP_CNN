@@ -5,32 +5,32 @@
 #include <functional>
 
 namespace chr {
-	enum class activation_function_type {
-		sigmoid, // SĞÍº¯Êı
-		tanh, // Ë«ÇúÕıÇĞº¯Êı  
-		relu, // ĞŞÕıÏßĞÔµ¥Ôª
-		lrelu, // Ğ¹Â©ĞŞÕıÏßĞÔµ¥Ôª
-	};
+enum class activation_function_type {
+    sigmoid, // Så‹å‡½æ•°
+    tanh, // åŒæ›²æ­£åˆ‡å‡½æ•°
+    relu, // ä¿®æ­£çº¿æ€§å•å…ƒ
+    lrelu, // æ³„æ¼ä¿®æ­£çº¿æ€§å•å…ƒ
+};
 
-	class activation_function {
-	private:
-		std::function<double(double)> function; // ¼¤»îº¯Êı
-		std::function<double(double)> derivative; // ¼¤»îº¯ÊıµÄµ¼Êı
-	public:
-		activation_function(activation_function_type type) { change_function(type); }
-		double operator()(double x) { return function(x); } // Ç°Ïò´«²¥£º¼ÆËã¼¤»îÖµ
-		double operator[](double x) { return derivative(x); } // ·´Ïò´«²¥£º¼ÆËãµ¼ÊıÖµ
-		void change_function(activation_function_type type); // ÇĞ»»¼¤»îº¯ÊıÀàĞÍ
-		// ¸÷ÖÖ¼¤»îº¯ÊıÊµÏÖ
-		double sigmoid(double x) { return 1.0 / (1 + exp(-x)); }
-		double sigmoid_derivative(double x) { return sigmoid(x) * (1 - sigmoid(x)); }
-		double tanh(double x) { return std::tanh(x); }
-		double tanh_derivative(double x) { return 1 / pow(cosh(x), 2); }
-		double relu(double x) { return x > 0 ? x : 0; }
-		double relu_derivative(double x) { return x > 0 ? 1 : 0; }
-		double lrelu(double x) { return x > 0 ? x : 0.01 * x; }
-		double lrelu_derivative(double x) { return x > 0 ? 1 : 0.01; }
-	};
+class activation_function {
+private:
+    std::function<double(double)> function; // æ¿€æ´»å‡½æ•°
+    std::function<double(double)> derivative; // æ¿€æ´»å‡½æ•°çš„å¯¼æ•°
+public:
+    activation_function(activation_function_type type) { change_function(type); }
+    double operator()(double x) { return function(x); } // å‰å‘ä¼ æ’­ï¼šè®¡ç®—æ¿€æ´»å€¼
+    double operator[](double x) { return derivative(x); } // åå‘ä¼ æ’­ï¼šè®¡ç®—å¯¼æ•°å€¼
+    void change_function(activation_function_type type); // åˆ‡æ¢æ¿€æ´»å‡½æ•°ç±»å‹
+    // å„ç§æ¿€æ´»å‡½æ•°å®ç°
+    double sigmoid(double x) { return 1.0 / (1 + exp(-x)); }
+    double sigmoid_derivative(double x) { return sigmoid(x) * (1 - sigmoid(x)); }
+    double tanh(double x) { return std::tanh(x); }
+    double tanh_derivative(double x) { return 1 / pow(cosh(x), 2); }
+    double relu(double x) { return x > 0 ? x : 0; }
+    double relu_derivative(double x) { return x > 0 ? 1 : 0; }
+    double lrelu(double x) { return x > 0 ? x : 0.01 * x; }
+    double lrelu_derivative(double x) { return x > 0 ? 1 : 0.01; }
+};
 }
 
 #endif // !ACTIVATION_FUNCTION_HPP

@@ -5,23 +5,23 @@
 #include <filesystem>
 
 namespace chr {
-	// ¾í»ıºË¹ıÂËÆ÷Àà
-	class filter {
-	private:
-		size_t core_size_; // ¾í»ıºË³ß´ç
-		size_t channels_; // ÊäÈëÍ¨µÀÊı
-	public:
-		double bias; // Æ«ÖÃÏî
-		std::vector<Eigen::MatrixXd> kernels; // ¾í»ıºË¾ØÕó¼¯ºÏ
-	public:
-		filter(size_t channels, size_t core_size); 
-		void initialize_gausz(double stddev); // ¸ßË¹³õÊ¼»¯
-		void initialize_xavier(size_t input_size); // Xavier³õÊ¼»¯
-		void initialize_He(size_t input_size); // He³õÊ¼»¯
-		// Ä£ĞÍ±£´æºÍ¼ÓÔØ
-		void save(const std::filesystem::path& path) const;
-		void load(const std::filesystem::path& path);
-	};
+// å·ç§¯æ ¸è¿‡æ»¤å™¨ç±»
+class filter {
+private:
+    size_t core_size_; // å·ç§¯æ ¸å°ºå¯¸
+    size_t channels_; // è¾“å…¥é€šé“æ•°
+public:
+    double bias; // åç½®é¡¹
+    std::vector<Eigen::MatrixXd> kernels; // å·ç§¯æ ¸çŸ©é˜µé›†åˆ
+public:
+    filter(size_t channels, size_t core_size);
+    void initialize_gausz(double stddev); // é«˜æ–¯åˆå§‹åŒ–
+    void initialize_xavier(size_t input_size); // Xavieråˆå§‹åŒ–
+    void initialize_He(size_t input_size); // Heåˆå§‹åŒ–
+    // æ¨¡å‹ä¿å­˜å’ŒåŠ è½½
+    void save(const std::filesystem::path& path) const;
+    void load(const std::filesystem::path& path);
+};
 }
 
 #endif // !FILTER_HPP

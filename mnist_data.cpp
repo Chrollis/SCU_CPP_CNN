@@ -2,93 +2,101 @@
 #include <fstream>
 
 namespace chr {
-	mnist_data::mnist_data(const Eigen::MatrixXd& image, size_t label) 
-		:image_(image), label_(label) {
-	}
-	mnist_data::mnist_data(Eigen::MatrixXd&& image, size_t label) 
-		: image_(image), label_(label) {
-	}
-	bool mnist_data::is_legal() const {
-		if (image_.rows() != 28 || image_.cols() != 28) return 0; // ¼ì²éÊÇ·ñÎª28x28³ß´ç
-		return 1;
-	}
-	// ×Ö½ÚĞò×ª»»º¯Êı(´ó¶Ë×ªĞ¡¶Ë)
-	unsigned mnist_data::swap_endian(unsigned val) {
-		val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);
-		return (val << 16) | (val >> 16);
-	}
-	// ÑéÖ¤MNISTÎÄ¼ş¸ñÊ½²¢·µ»ØÊı¾İÏîÊıÁ¿
-	unsigned mnist_data::check_mnist_file(std::ifstream& mnist_images, std::ifstream& mnist_labels) {
-		if (!mnist_images.is_open()) {
-			throw std::runtime_error("failed to open MNIST image file");
-		}
-		if (!mnist_labels.is_open()) {
-			throw std::runtime_error("failed to open MNIST label file");
-		}
-		unsigned magic = 0;
-		unsigned items = 0, labels = 0;
-		// ¼ì²éÍ¼ÏñÎÄ¼şÄ§Êı
-		mnist_images.read(reinterpret_cast<char*>(&magic), 4);
-		magic = swap_endian(magic);
-		if (magic != 2051) { // MNISTÍ¼ÏñÎÄ¼şÄ§ÊıÓ¦Îª2051
-			throw std::runtime_error("not MNIST image file");
-		}
-		// ¼ì²é±êÇ©ÎÄ¼şÄ§Êı
-		mnist_labels.read(reinterpret_cast<char*>(&magic), 4);
-		magic = swap_endian(magic);
-		if (magic != 2049) { // MNIST±êÇ©ÎÄ¼şÄ§ÊıÓ¦Îª2049
-			throw std::runtime_error("not MNIST label file");
-		}
-		// ¶ÁÈ¡Êı¾İÏîÊıÁ¿
-		mnist_images.read(reinterpret_cast<char*>(&items), 4);
-		items = swap_endian(items);
-		mnist_labels.read(reinterpret_cast<char*>(&labels), 4);
-		labels = swap_endian(labels);
-		if (items != labels) { // Í¼ÏñºÍ±êÇ©ÊıÁ¿±ØĞëÆ¥Åä
-			throw std::runtime_error("image file and label file are not a pair");
-		}
-		return items;
-	}
-	// ´ÓMNISTÎÄ¼ş¶ÁÈ¡Êı¾İ
-	std::vector<mnist_data> mnist_data::obtain_data(const std::filesystem::path& mnist_image_path, const std::filesystem::path& mnist_label_path, size_t offset, size_t size) {
-		std::ifstream mnist_images(mnist_image_path, std::ios::binary);
-		std::ifstream mnist_labels(mnist_label_path, std::ios::binary);
-		size_t items = 0;
-		try {
-			items = check_mnist_file(mnist_images, mnist_labels); // ÑéÖ¤ÎÄ¼ş¸ñÊ½
-		}
-		catch (const std::exception& e) {
-			std::cerr << "[mnist_data::obtain_data]: " << e.what() << std::endl;
-			return {};
-		}
-		if (offset >= items) return {}; // Æ«ÒÆÁ¿²»ÄÜ³¬¹ıÊı¾İ¼¯´óĞ¡
-		std::vector<mnist_data> batch;
-		unsigned rows = 0, cols = 0;
-		// ¶ÁÈ¡Í¼Ïñ³ß´ç
-		mnist_images.read(reinterpret_cast<char*>(&rows), 4);
-		rows = swap_endian(rows);
-		mnist_images.read(reinterpret_cast<char*>(&cols), 4);
-		cols = swap_endian(cols);
-		// Ìø×ªµ½Ö¸¶¨Æ«ÒÆÁ¿
-		mnist_images.seekg(offset * rows * cols, std::ios::cur);
-		mnist_labels.seekg(offset, std::ios::cur);
-		// ¶ÁÈ¡Ö¸¶¨ÊıÁ¿µÄÊı¾İ
-		for (size_t i = 0; i < size && i + offset < items; i++) {
-			Eigen::MatrixXd image(rows, cols);
-			std::vector<unsigned char> pixels(rows * cols);
-			size_t label = 0;
-			// ¶ÁÈ¡Í¼ÏñÏñËØºÍ±êÇ©
-			mnist_images.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(rows) * cols);
-			mnist_labels.read(reinterpret_cast<char*>(&label), 1);
-			// ½«ÏñËØÊı¾İ×ª»»Îª¾ØÕó(¶şÖµ»¯)
-			for (unsigned m = 0; m < rows; m++) {
-				for (unsigned n = 0; n < cols; n++) {
-					image(m, n) = pixels[static_cast<size_t>(m) * cols + n] ? 1.0 : 0.0;
-				}
-			}
-			mnist_data piece(std::move(image), label);
-			batch.push_back(std::move(piece));
-		}
-		return batch;
-	}
+mnist_data::mnist_data(const Eigen::MatrixXd& image, size_t label)
+    : image_(image)
+    , label_(label)
+{
+}
+mnist_data::mnist_data(Eigen::MatrixXd&& image, size_t label)
+    : image_(image)
+    , label_(label)
+{
+}
+bool mnist_data::is_legal() const
+{
+    if (image_.rows() != 28 || image_.cols() != 28)
+        return 0; // æ£€æŸ¥æ˜¯å¦ä¸º28x28å°ºå¯¸
+    return 1;
+}
+// å­—èŠ‚åºè½¬æ¢å‡½æ•°(å¤§ç«¯è½¬å°ç«¯)
+unsigned mnist_data::swap_endian(unsigned val)
+{
+    val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);
+    return (val << 16) | (val >> 16);
+}
+// éªŒè¯MNISTæ–‡ä»¶æ ¼å¼å¹¶è¿”å›æ•°æ®é¡¹æ•°é‡
+unsigned mnist_data::check_mnist_file(std::ifstream& mnist_images, std::ifstream& mnist_labels)
+{
+    if (!mnist_images.is_open()) {
+        throw std::runtime_error("Failed to open MNIST image file");
+    }
+    if (!mnist_labels.is_open()) {
+        throw std::runtime_error("Failed to open MNIST label file");
+    }
+    unsigned magic = 0;
+    unsigned items = 0, labels = 0;
+    // æ£€æŸ¥å›¾åƒæ–‡ä»¶é­”æ•°
+    mnist_images.read(reinterpret_cast<char*>(&magic), 4);
+    magic = swap_endian(magic);
+    if (magic != 2051) { // MNISTå›¾åƒæ–‡ä»¶é­”æ•°åº”ä¸º2051
+        throw std::runtime_error("Invalid MNIST image file format");
+    }
+    // æ£€æŸ¥æ ‡ç­¾æ–‡ä»¶é­”æ•°
+    mnist_labels.read(reinterpret_cast<char*>(&magic), 4);
+    magic = swap_endian(magic);
+    if (magic != 2049) { // MNISTæ ‡ç­¾æ–‡ä»¶é­”æ•°åº”ä¸º2049
+        throw std::runtime_error("Invalid MNIST label file format");
+    }
+    // è¯»å–æ•°æ®é¡¹æ•°é‡
+    mnist_images.read(reinterpret_cast<char*>(&items), 4);
+    items = swap_endian(items);
+    mnist_labels.read(reinterpret_cast<char*>(&labels), 4);
+    labels = swap_endian(labels);
+    if (items != labels) { // å›¾åƒå’Œæ ‡ç­¾æ•°é‡å¿…é¡»åŒ¹é…
+        throw std::runtime_error("Image and label file counts do not match");
+    }
+    return items;
+}
+// ä»MNISTæ–‡ä»¶è¯»å–æ•°æ®
+std::vector<mnist_data> mnist_data::obtain_data(const std::filesystem::path& mnist_image_path, const std::filesystem::path& mnist_label_path, size_t offset, size_t size)
+{
+    std::ifstream mnist_images(mnist_image_path, std::ios::binary);
+    std::ifstream mnist_labels(mnist_label_path, std::ios::binary);
+    size_t items = 0;
+    try {
+        items = check_mnist_file(mnist_images, mnist_labels); // éªŒè¯æ–‡ä»¶æ ¼å¼
+    } catch (const std::exception& e) {
+        throw e;
+    }
+    if (offset >= items)
+        return {}; // åç§»é‡ä¸èƒ½è¶…è¿‡æ•°æ®é›†å¤§å°
+    std::vector<mnist_data> batch;
+    unsigned rows = 0, cols = 0;
+    // è¯»å–å›¾åƒå°ºå¯¸
+    mnist_images.read(reinterpret_cast<char*>(&rows), 4);
+    rows = swap_endian(rows);
+    mnist_images.read(reinterpret_cast<char*>(&cols), 4);
+    cols = swap_endian(cols);
+    // è·³è½¬åˆ°æŒ‡å®šåç§»é‡
+    mnist_images.seekg(offset * rows * cols, std::ios::cur);
+    mnist_labels.seekg(offset, std::ios::cur);
+    // è¯»å–æŒ‡å®šæ•°é‡çš„æ•°æ®
+    for (size_t i = 0; i < size && i + offset < items; i++) {
+        Eigen::MatrixXd image(rows, cols);
+        std::vector<unsigned char> pixels(rows * cols);
+        size_t label = 0;
+        // è¯»å–å›¾åƒåƒç´ å’Œæ ‡ç­¾
+        mnist_images.read(reinterpret_cast<char*>(pixels.data()), static_cast<std::streamsize>(rows) * cols);
+        mnist_labels.read(reinterpret_cast<char*>(&label), 1);
+        // å°†åƒç´ æ•°æ®è½¬æ¢ä¸ºçŸ©é˜µ(äºŒå€¼åŒ–)
+        for (unsigned m = 0; m < rows; m++) {
+            for (unsigned n = 0; n < cols; n++) {
+                image(m, n) = pixels[static_cast<size_t>(m) * cols + n] ? 1.0 : 0.0;
+            }
+        }
+        mnist_data piece(std::move(image), label);
+        batch.push_back(std::move(piece));
+    }
+    return batch;
+}
 }

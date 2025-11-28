@@ -1,177 +1,117 @@
 #include "le_net5.hpp"
+#include <fstream>
 
 namespace chr {
-	le_net5::le_net5() 
-		: conv1_(1, 5, 6, 2, 1, activation_function_type::lrelu), // ÊäÈëÍ¨µÀ1£¬Êä³öÍ¨µÀ6£¬5x5¾í»ıºË
-		pool1_(2, 2), // 2x2×î´ó³Ø»¯£¬²½³¤2
-		conv2_(6, 5, 16, 0, 1, activation_function_type::lrelu), // ÊäÈëÍ¨µÀ6£¬Êä³öÍ¨µÀ16£¬5x5¾í»ıºË
-		pool2_(2, 2), // 2x2×î´ó³Ø»¯£¬²½³¤2
-		fc1_(400, 120, activation_function_type::lrelu), // 2x2×î´ó³Ø»¯£¬²½³¤2
-		fc2_(120, 84, activation_function_type::lrelu), // 120->84È«Á¬½Ó  
-		fc3_(84, 10, activation_function_type::lrelu) { // 84->10È«Á¬½Ó(Êä³ö²ã)
-	}
-	Eigen::VectorXd le_net5::forward(const std::vector<Eigen::MatrixXd>& input) {
-		auto a1 = conv1_.forward(input);
-		auto p1 = pool1_.forward(a1);
-		auto a2 = conv2_.forward(p1);
-		auto p2 = pool2_.forward(a2);
-		Eigen::VectorXd f = flatten(p2); // Õ¹Æ½ÎªÏòÁ¿
-		auto a3 = fc1_.forward(f);
-		auto a4 = fc2_.forward(a3);
-		return fc3_.forward(a4);
-	}
-	std::vector<Eigen::MatrixXd> le_net5::backward(size_t label, double learning_rate) {
-		auto da4 = fc3_.backward({}, learning_rate, 1, label);
-		auto da3 = fc2_.backward(da4, learning_rate);
-		auto df = fc1_.backward(da3, learning_rate);
-		auto dp2 = counterflatten(df, 16, 5, 5); // ·´Õ¹Æ½ÎªÕÅÁ¿
-		auto da2 = pool2_.backward(dp2);
-		auto dp1 = conv2_.backward(da2, learning_rate, 1);
-		auto da1 = pool1_.backward(dp1);
-		return conv1_.backward(da1, learning_rate);
-	}
-	double le_net5::train(const std::vector<mnist_data>& dataset, size_t epochs, double learning_rate, bool show_detail) {
-		double sum_accuracy = 0.0;
-		if (show_detail) {
-			// ÏÔÊ¾µ±Ç°Êı¾İ¼¯ĞÅÏ¢
-			std::cout << "Current Dataset£º";
-			for (size_t i = 0; i < dataset.size(); i++) {
-				std::cout << std::to_string(dataset[i].label());
-				if (i >= 30) {
-					std::cout << "...";
-					break;
-				}
-			}
-			std::cout << " (" << dataset.size() << "p)" << std::endl;
-			// ÑµÁ·Ñ­»·
-			for (size_t epoch = 0; epoch < epochs; ++epoch) {
-				double loss = 0.0;
-				size_t correct = 0;
-				for (size_t i = 0; i < dataset.size(); ++i) {
-					Eigen::VectorXd output = forward({ dataset[i].image() });
-					size_t predicted = predict(output);
-					double sample_loss = cross_entropy_loss(output, dataset[i].label());
-					if (predicted == dataset[i].label()) {
-						correct++;
-					}
-					loss += sample_loss;
-					backward(dataset[i].label(), learning_rate);
-					// ½ø¶ÈÏÔÊ¾
-					if (i == 0 || (i + 1) % 10 == 0 || (i + 1) == dataset.size()) {
-						double progress = static_cast<double>(i + 1) / dataset.size() * 100.0;
-						double current_loss = loss / (i + 1);
-						double current_accuracy = static_cast<double>(correct) / (i + 1) * 100.0;
-						// ÏÔÊ¾½ø¶ÈÌõ
-						std::cout << "\rEpoch-" << epoch + 1
-							<< ", Loss=" << std::fixed << std::setprecision(4) << current_loss
-							<< ", Accuracy=" << std::fixed << std::setprecision(2) << current_accuracy << "%"
-							<< " (" << correct << "/" << i + 1 << ") [";
-						int pos = static_cast<int>(20 * progress / 100.0);
-						for (int j = 0; j < 20; ++j) {
-							if (j < pos) std::cout << "=";
-							else std::cout << " ";
-						}
-						std::cout << "] " << std::setw(3) << static_cast<int>(progress) << "%    " << std::flush;
-					}
-				}
-				// ¼ÆËãepochÍ³¼ÆĞÅÏ¢
-				double avg_loss = loss / dataset.size();
-				double accuracy = static_cast<double>(correct) / dataset.size() * 100.0;
-				// Êä³öepoch½á¹û
-				std::cout << "\rEpoch-" << epoch + 1
-					<< ", Loss=" << std::fixed << std::setprecision(4) << avg_loss
-					<< ", Accuracy=" << std::fixed << std::setprecision(2) << accuracy << "%"
-					<< " (" << correct << "/" << dataset.size() << ")" << std::endl;
-				sum_accuracy += accuracy;
-			}
-		}
-		else {
-			for (size_t epoch = 0; epoch < epochs; ++epoch) {
-				double loss = 0.0;
-				size_t correct = 0;
-				std::cout << "Epoch-" << epoch + 1 << " ...";
-				for (size_t i = 0; i < dataset.size(); ++i) {
-					Eigen::VectorXd output = forward({ dataset[i].image() });
-					size_t predicted = predict(output);
-					double sample_loss = cross_entropy_loss(output, dataset[i].label());
-					if (predicted == dataset[i].label()) {
-						correct++;
-					}
-					loss += sample_loss;
-					backward(dataset[i].label(), learning_rate);
-				}
-				double avg_loss = loss / dataset.size();
-				double accuracy = static_cast<double>(correct) / dataset.size() * 100.0;
-				// Êä³öepoch½á¹û
-				std::cout << "\b\b\b\b"
-					<< ", Loss=" << std::fixed << std::setprecision(4) << avg_loss
-					<< ", Accuracy=" << std::fixed << std::setprecision(2) << accuracy << "%"
-					<< " (" << correct << "/" << dataset.size() << ")" << std::endl;
-				sum_accuracy += accuracy;
-			}
-		}
-		return sum_accuracy /= epochs; // ·µ»ØÆ½¾ù×¼È·ÂÊ
-	}
-	size_t le_net5::predict(const Eigen::VectorXd& output) {
-		size_t max_index = 0;
-		double max_value = output[0];
-		// ÕÒµ½Êä³öÏòÁ¿ÖĞ×î´óÖµµÄË÷Òı
-		for (size_t i = 1; i < static_cast<size_t>(output.size()); ++i) {
-			if (output[i] > max_value) {
-				max_value = output[i];
-				max_index = i;
-			}
-		}
-		return max_index;
-	}
-	void le_net5::save(const std::filesystem::path& path) {
-		std::filesystem::create_directory(path);
-		conv1_.save(path / "conv1");
-		conv2_.save(path / "conv2");
-		fc1_.save(path / "fc1.txt");
-		fc2_.save(path / "fc2.txt");
-		fc3_.save(path / "fc3.txt");
-	}
-	void le_net5::load(const std::filesystem::path& path) {
-		std::filesystem::create_directory(path);
-		conv1_.load(path / "conv1");
-		conv2_.load(path / "conv2");
-		fc1_.load(path / "fc1.txt");
-		fc2_.load(path / "fc2.txt");
-		fc3_.load(path / "fc3.txt");
-	}
-	Eigen::VectorXd le_net5::flatten(const std::vector<Eigen::MatrixXd>& matrixs) {
-		Eigen::VectorXd result(matrixs.size() * matrixs[0].size());
-		size_t index = 0;
-		for (const auto& matrix : matrixs) {
-			for (size_t r = 0; r < static_cast<size_t>(matrix.rows()); r++) {
-				for (size_t c = 0; c < static_cast<size_t>(matrix.cols()); c++) {
-					result(index++) = matrix(r, c);
-				}
-			}
-		}
-		return result;
-	}
-	std::vector<Eigen::MatrixXd> le_net5::counterflatten(const Eigen::VectorXd& vector, size_t channels, size_t rows, size_t cols) {
-		std::vector<Eigen::MatrixXd> result;
-		size_t index = 0;
-		for (size_t i = 0; i < channels; ++i) {
-			Eigen::MatrixXd channel(rows, cols);
-			for (size_t r = 0; r < rows; ++r) {
-				for (size_t c = 0; c < cols; ++c) {
-					channel(r, c) = vector[index++];
-				}
-			}
-			result.push_back(channel);
-		}
-		return result;
-	}
-	double le_net5::cross_entropy_loss(const Eigen::VectorXd& output, size_t label) {
-		// ¼ÆËãsoftmax
-		Eigen::VectorXd softmax_output = output.array().exp();
-		softmax_output /= softmax_output.sum();
-		// ¼ÆËã½»²æìØËğÊ§£º-log(softmax_output[label])
-		return -std::log(softmax_output[label] + 1e-8); // Ìí¼ÓĞ¡ÊıÖµ·ÀÖ¹log(0)
-	}
+le_net5::le_net5()
+    : conv1_(1, 5, 6, 2, 1, activation_function_type::lrelu)
+    , // è¾“å…¥é€šé“1ï¼Œè¾“å‡ºé€šé“6ï¼Œ5x5å·ç§¯æ ¸
+    pool1_(2, 2)
+    , // 2x2æœ€å¤§æ± åŒ–ï¼Œæ­¥é•¿2
+    conv2_(6, 5, 16, 0, 1, activation_function_type::lrelu)
+    , // è¾“å…¥é€šé“6ï¼Œè¾“å‡ºé€šé“16ï¼Œ5x5å·ç§¯æ ¸
+    pool2_(2, 2)
+    , // 2x2æœ€å¤§æ± åŒ–ï¼Œæ­¥é•¿2
+    fc1_(400, 120, activation_function_type::lrelu)
+    , // 2x2æœ€å¤§æ± åŒ–ï¼Œæ­¥é•¿2
+    fc2_(120, 84, activation_function_type::lrelu)
+    , // 120->84å…¨è¿æ¥
+    fc3_(84, 10, activation_function_type::lrelu)
+{ // 84->10å…¨è¿æ¥(è¾“å‡ºå±‚)
+}
+Eigen::VectorXd le_net5::forward(const std::vector<Eigen::MatrixXd>& input)
+{
+    auto a1 = conv1_.forward(input);
+    auto p1 = pool1_.forward(a1);
+    auto a2 = conv2_.forward(p1);
+    auto p2 = pool2_.forward(a2);
+    Eigen::VectorXd f = flatten(p2); // å±•å¹³ä¸ºå‘é‡
+    auto a3 = fc1_.forward(f);
+    auto a4 = fc2_.forward(a3);
+    return fc3_.forward(a4);
+}
+std::vector<Eigen::MatrixXd> le_net5::backward(size_t label, double learning_rate)
+{
+    auto da4 = fc3_.backward({}, learning_rate, 1, label);
+    auto da3 = fc2_.backward(da4, learning_rate);
+    auto df = fc1_.backward(da3, learning_rate);
+    auto dp2 = counterflatten(df, 16, 5, 5); // åå±•å¹³ä¸ºå¼ é‡
+    auto da2 = pool2_.backward(dp2);
+    auto dp1 = conv2_.backward(da2, learning_rate, 1);
+    auto da1 = pool1_.backward(dp1);
+    return conv1_.backward(da1, learning_rate);
+}
+void le_net5::save(const std::filesystem::path& path)
+{
+    std::filesystem::create_directory(path);
+    conv1_.save(path / "conv1");
+    conv2_.save(path / "conv2");
+    fc1_.save(path / "fc1.txt");
+    fc2_.save(path / "fc2.txt");
+    fc3_.save(path / "fc3.txt");
+    emit inform("LeNet-5 model saved to: " + path.string());
+}
+void le_net5::load(const std::filesystem::path& path)
+{
+    std::filesystem::create_directory(path);
+    conv1_.load(path / "conv1");
+    conv2_.load(path / "conv2");
+    fc1_.load(path / "fc1.txt");
+    fc2_.load(path / "fc2.txt");
+    fc3_.load(path / "fc3.txt");
+    emit inform("LeNet-5 model loaded from: " + path.string());
+}
 
+void le_net5::save_binary(const std::filesystem::__cxx11::path& path)
+{
+    std::ofstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file for saving: " + path.string());
+    }
+    // å†™å…¥é­”æ•° 1128
+    uint32_t magic_number = 1128;
+    file.write(reinterpret_cast<const char*>(&magic_number), sizeof(magic_number));
+    // å†™å…¥æ¨¡å‹ç±»å‹å
+    std::string model_type = this->model_type();
+    uint32_t type_length = model_type.length();
+    file.write(reinterpret_cast<const char*>(&type_length), sizeof(type_length));
+    file.write(model_type.c_str(), type_length);
+    // ä¿å­˜å„å±‚å‚æ•°
+    conv1_.save_binary(file);
+    conv2_.save_binary(file);
+    fc1_.save_binary(file);
+    fc2_.save_binary(file);
+    fc3_.save_binary(file);
+    file.close();
+    emit inform("LeNet-5 model saved to: " + path.string());
+}
+
+void le_net5::load_binary(const std::filesystem::__cxx11::path& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file for loading: " + path.string());
+    }
+    // è¯»å–å¹¶éªŒè¯é­”æ•°
+    uint32_t magic_number;
+    file.read(reinterpret_cast<char*>(&magic_number), sizeof(magic_number));
+    if (magic_number != 1128) {
+        throw std::runtime_error("Invalid file format: magic number mismatch");
+    }
+    // è¯»å–å¹¶éªŒè¯æ¨¡å‹ç±»å‹
+    uint32_t type_length;
+    file.read(reinterpret_cast<char*>(&type_length), sizeof(type_length));
+    std::string model_type(type_length, ' ');
+    file.read(&model_type[0], type_length);
+    if (model_type != this->model_type()) {
+        throw std::runtime_error("Model type mismatch: expected " + this->model_type() + ", got " + model_type);
+    }
+    // åŠ è½½å„å±‚å‚æ•°
+    conv1_.load_binary(file);
+    conv2_.load_binary(file);
+    fc1_.load_binary(file);
+    fc2_.load_binary(file);
+    fc3_.load_binary(file);
+    file.close();
+    emit inform("LeNet-5 model loaded from: " + path.string());
+}
 }

@@ -1,136 +1,253 @@
 #include "image_process.hpp"
+#include <QCryptographicHash>
 #undef min
 #undef max
 
 namespace chr {
-	namespace image_process {
-		// ½«Eigen¾ØÕó×ª»»ÎªOpenCVÍ¼Ïñ(»Ò¶ÈÍ¼)
-		cv::Mat matrix_to_image(const Eigen::MatrixXd& matrix) {
-			int rows = static_cast<int>(matrix.rows()), cols = static_cast<int>(matrix.cols());
-			cv::Mat image(rows, cols, CV_8UC1); // ´´½¨8Î»ÎŞ·ûºÅµ¥Í¨µÀÍ¼Ïñ
-			for (int m = 0; m < rows; m++) {
-				unsigned char* ptr = image.ptr<unsigned char>(m);
-				for (int n = 0; n < cols; n++) {
-					ptr[n] = static_cast<unsigned char>(matrix(m, n) * 255); // ½«0-1Öµ×ª»»Îª0-255
-				}
-			}
-			return image;
-		}
-		// EasyXÍ¼Æ¬×ªOpenCVÍ¼Æ¬
-		cv::Mat easyx_to_image(const IMAGE& src) {
-			cv::Mat dst(cv::Size(src.getwidth(), src.getheight()), CV_8UC3);
-			IMAGE copy = src;
-			auto ptr = GetImageBuffer(&copy);
-			for (int i = 0; i < src.getwidth(); i++) {
-				for (int j = 0; j < src.getheight(); j++) {
-					COLORREF pixel = ptr[i + j * src.getwidth()];
-					BYTE b = GetBValue(pixel);
-					BYTE g = GetGValue(pixel);
-					BYTE r = GetRValue(pixel);
-					dst.at<cv::Vec3b>(j, i) = cv::Vec3b(r, g, b);
-				}
-			}
-			return dst;
-		}
-		IMAGE image_to_easyx(const cv::Mat& src) {
-			IMAGE dst(src.cols, src.rows);
-			auto ptr = GetImageBuffer(&dst);
-			for (int i = 0; i < src.rows; i++) {
-				for (int j = 0; j < src.cols; j++) {
-					cv::Vec3b pixel = src.at<cv::Vec3b>(j, i);
-					ptr[i + j * src.cols] = RGB(pixel[0], pixel[1], pixel[2]);
-				}
-			}
-			return dst;
-		}
-		// ´¦Àíµ¥¸öÊı×ÖÍ¼Ïñ£ºÌî³ä¡¢Ëõ·Å¡¢¶şÖµ»¯
-		Eigen::MatrixXd process_digit(const cv::Mat& digit_mat) {
-			cv::Mat copy = digit_mat.clone();
-			apply_padding(copy); // Ìí¼ÓÌî³ä
-			cv::Mat resized;
-			cv::resize(copy, resized, cv::Size(28, 28), 0, 0, cv::INTER_AREA); // Ëõ·Åµ½28x28
-			Eigen::MatrixXd eigen_digit(28, 28);
-			for (int i = 0; i < 28; i++) {
-				for (int j = 0; j < 28; j++) {
-					eigen_digit(i, j) = resized.at<unsigned char>(i, j) ? 1.0 : 0.0; // ¶şÖµ»¯
-				}
-			}
-			return eigen_digit;
-		}
-		// ÎªÍ¼ÏñÌí¼ÓÌî³ä£¬Ê¹Æä½Ó½üÕı·½ĞÎ²¢Ìí¼Ó±ß½ç
-		void apply_padding(cv::Mat& img) {
-			int top, bottom, left, right;
-			// ¸ù¾İ¿í¸ß±È¼ÆËãÌî³ä´óĞ¡
-			if (img.rows > img.cols) {
-				left = (img.rows - img.cols) / 2;
-				right = img.rows - img.cols - left;
-				top = bottom = 0;
-			}
-			else {
-				top = (img.cols - img.rows) / 2;
-				bottom = img.cols - img.rows - top;
-				left = right = 0;
-			}
-			// Ìí¼ÓÌî³äÊ¹Í¼Ïñ±äÎªÕı·½ĞÎ
-			cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0));
-			// Ìí¼Ó¶îÍâ±ß½ç
-			int border_width = img.rows / 5;
-			cv::copyMakeBorder(img, img, border_width, border_width, border_width, border_width, cv::BORDER_CONSTANT, cv::Scalar(0));
-		}
-		// ¼ì²é¾ØĞÎÇøÓòÊÇ·ñÎªÓĞĞ§µÄÊı×ÖÇøÓò
-		bool is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size) {
-			int min_size = static_cast<int>(std::min(image_size.width, image_size.height) * 0.1); // ×îĞ¡³ß´çãĞÖµ
-			min_size = std::min(min_size, 28);
-			return (rect.width > min_size || rect.height > min_size);
-		}
-		// ´¦ÀíÕûÕÅÍ¼Ïñ£¬ÌáÈ¡ËùÓĞÊı×ÖÇøÓò
-		std::vector<digit_block> process_image(const cv::Mat& digits_mat) {
-			std::vector<digit_block> digits;
-			cv::Mat processed = binarize_image(digits_mat); // ¶şÖµ»¯
-			std::vector<std::vector<cv::Point>> contours;
-			std::vector<cv::Vec4i> hierarchy;
-			// ²éÕÒÂÖÀª
-			cv::findContours(processed, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-			for (size_t i = 0; i < contours.size(); i++) {
-				cv::Rect bounding_rect = cv::boundingRect(contours[i]); // »ñÈ¡±ß½ç¾ØĞÎ
-				if (is_valid_digit_region(bounding_rect, digits_mat.size())) {
-					cv::Mat digit_mat = processed(bounding_rect); // ÌáÈ¡Êı×ÖÇøÓò
-					Eigen::MatrixXd digit = process_digit(digit_mat); // ´¦Àíµ¥¸öÊı×Ö
-					if (digit.size() > 0) {
-						digits.push_back({ bounding_rect,digit });
-					}
-				}
-			}
-			return digits;
-		}
-		// ÎªÍ¼ÏñÌí¼Ó±êÇ©±ê¼Ç£¨¿ò£©
-		cv::Mat labelize_image(const cv::Mat& src, const std::vector<digit_block>& blocks) {
-			cv::Mat dst = src;
-			for (size_t i = 0; i < blocks.size(); i++) {
-				int x = blocks[i].rect.x;
-				int y = blocks[i].rect.y;
-				int w = blocks[i].rect.width;
-				int h = blocks[i].rect.height;
-				dst.row(y).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
-				dst.row(y + h - 1).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
-				dst.col(x).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
-				dst.col(x + w - 1).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
-			}
-			return dst;
-		}
-		// Í¼Ïñ¶şÖµ»¯´¦Àí
-		cv::Mat binarize_image(const cv::Mat& src_img) {
-			cv::Mat gray;
-			// ×ª»»Îª»Ò¶ÈÍ¼(Èç¹ûÊÇ²ÊÉ«Í¼)
-			if (src_img.channels() == 3) {
-				cv::cvtColor(src_img, gray, cv::COLOR_BGR2GRAY);
-			}
-			else {
-				gray = src_img.clone();
-			}
-			cv::Mat binary;
-			cv::threshold(gray, binary, 127, 255, cv::THRESH_BINARY_INV); // ·´¶şÖµ»¯(ºÚµ×°××Ö)
-			return binary;
-		}
-	}
+namespace image_process {
+    // å°†EigençŸ©é˜µè½¬æ¢ä¸ºOpenCVå›¾åƒ(ç°åº¦å›¾)
+    cv::Mat eigen_matrix_to_cv_mat(const Eigen::MatrixXd& matrix)
+    {
+        int rows = static_cast<int>(matrix.rows()), cols = static_cast<int>(matrix.cols());
+        cv::Mat image(rows, cols, CV_8UC1); // åˆ›å»º8ä½æ— ç¬¦å·å•é€šé“å›¾åƒ
+        for (int m = 0; m < rows; m++) {
+            unsigned char* ptr = image.ptr<unsigned char>(m);
+            for (int n = 0; n < cols; n++) {
+                ptr[n] = static_cast<unsigned char>(matrix(m, n) * 255); // å°†0-1å€¼è½¬æ¢ä¸º0-255
+            }
+        }
+        return image;
+    }
+    Eigen::MatrixXd cv_mat_to_eigen_matrix(const cv::Mat& mat)
+    {
+        Eigen::MatrixXd matrix(mat.rows, mat.cols);
+        for (int i = 0; i < mat.rows; i++) {
+            for (int j = 0; j < mat.cols; j++) {
+                matrix(i, j) = mat.at<unsigned char>(i, j) ? 1.0 : 0.0; // äºŒå€¼åŒ–
+            }
+        }
+        return matrix;
+    }
+    // å¤„ç†å•ä¸ªæ•°å­—å›¾åƒï¼šå¡«å……ã€ç¼©æ”¾ã€äºŒå€¼åŒ–
+    Eigen::MatrixXd process_digit(const cv::Mat& digit_mat)
+    {
+        cv::Mat copy = digit_mat.clone();
+        apply_padding(copy); // æ·»åŠ å¡«å……
+        cv::Mat resized;
+        cv::resize(copy, resized, cv::Size(28, 28), 0, 0, cv::INTER_AREA); // ç¼©æ”¾åˆ°28x28
+        return cv_mat_to_eigen_matrix(resized);
+    }
+    // ä¸ºå›¾åƒæ·»åŠ å¡«å……ï¼Œä½¿å…¶æ¥è¿‘æ­£æ–¹å½¢å¹¶æ·»åŠ è¾¹ç•Œ
+    void apply_padding(cv::Mat& img)
+    {
+        int top, bottom, left, right;
+        // æ ¹æ®å®½é«˜æ¯”è®¡ç®—å¡«å……å¤§å°
+        if (img.rows > img.cols) {
+            left = (img.rows - img.cols) / 2;
+            right = img.rows - img.cols - left;
+            top = bottom = 0;
+        } else {
+            top = (img.cols - img.rows) / 2;
+            bottom = img.cols - img.rows - top;
+            left = right = 0;
+        }
+        // æ·»åŠ å¡«å……ä½¿å›¾åƒå˜ä¸ºæ­£æ–¹å½¢
+        cv::copyMakeBorder(img, img, top, bottom, left, right, cv::BORDER_CONSTANT, cv::Scalar(0));
+        // æ·»åŠ é¢å¤–è¾¹ç•Œ
+        int border_width = img.rows / 5;
+        cv::copyMakeBorder(img, img, border_width, border_width, border_width, border_width, cv::BORDER_CONSTANT, cv::Scalar(0));
+    }
+    // æ£€æŸ¥çŸ©å½¢åŒºåŸŸæ˜¯å¦ä¸ºæœ‰æ•ˆçš„æ•°å­—åŒºåŸŸ
+    bool is_valid_digit_region(const cv::Rect& rect, const cv::Size& image_size)
+    {
+        int min_size = static_cast<int>(std::min(image_size.width, image_size.height) * 0.1); // æœ€å°å°ºå¯¸é˜ˆå€¼
+        min_size = std::min(min_size, 28);
+        return (rect.width > min_size || rect.height > min_size);
+    }
+    // å¤„ç†æ•´å¼ å›¾åƒï¼Œæå–æ‰€æœ‰æ•°å­—åŒºåŸŸ
+    std::vector<digit_block> process_image(const cv::Mat& digits_mat)
+    {
+        std::vector<digit_block> digits;
+        cv::Mat processed = binarize_image(digits_mat); // äºŒå€¼åŒ–
+        std::vector<std::vector<cv::Point>> contours;
+        std::vector<cv::Vec4i> hierarchy;
+        // æŸ¥æ‰¾è½®å»“
+        cv::findContours(processed, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
+        for (size_t i = 0; i < contours.size(); i++) {
+            cv::Rect bounding_rect = cv::boundingRect(contours[i]); // è·å–è¾¹ç•ŒçŸ©å½¢
+            if (is_valid_digit_region(bounding_rect, digits_mat.size())) {
+                cv::Mat digit_mat = processed(bounding_rect); // æå–æ•°å­—åŒºåŸŸ
+                Eigen::MatrixXd digit = process_digit(digit_mat); // å¤„ç†å•ä¸ªæ•°å­—
+                if (digit.size() > 0) {
+                    digits.push_back({ bounding_rect, digit });
+                }
+            }
+        }
+        if (digits.size() <= 1)
+            return digits;
+        // è®¡ç®—é«˜åº¦çš„ä¸­å€¼
+        std::vector<int> heights;
+        for (const auto& digit : digits) {
+            heights.push_back(digit.rect.height);
+        }
+        std::sort(heights.begin(), heights.end());
+        int median_height = heights[heights.size() / 2];
+        // æŒ‰yåæ ‡æ’åº
+        std::sort(digits.begin(), digits.end(), [](const digit_block& a, const digit_block& b) {
+            return a.rect.y < b.rect.y;
+        });
+        // åˆ†ç»„
+        std::vector<std::vector<digit_block>> rows;
+        for (const auto& digit : digits) {
+            if (rows.empty()) {
+                rows.push_back({ digit });
+            } else {
+                auto& curr_row = rows.back();
+                int curr_row_y = curr_row[0].rect.y;
+                if (std::abs(digit.rect.y - curr_row_y) <= median_height * 0.8) {
+                    curr_row.push_back(digit);
+                } else {
+                    rows.push_back({ digit });
+                }
+            }
+        }
+        // å¯¹æ¯ä¸€è¡ŒæŒ‰xåæ ‡æ’åº
+        for (auto& row : rows) {
+            std::sort(row.begin(), row.end(), [](const digit_block& a, const digit_block& b) {
+                return a.rect.x < b.rect.x;
+            });
+        }
+        digits.clear(); // å°†è¡Œåˆå¹¶ä¸ºä¸€ä¸ªåˆ—è¡¨
+        for (const auto& row : rows) {
+            for (const auto& digit : row) {
+                digits.push_back(digit);
+            }
+        }
+        return digits;
+    }
+    // ä¸ºå›¾åƒæ·»åŠ æ ‡ç­¾æ ‡è®°ï¼ˆæ¡†ï¼‰
+    cv::Mat labelize_image(const cv::Mat& src, const std::vector<digit_block>& blocks)
+    {
+        cv::Mat dst = src;
+        for (size_t i = 0; i < blocks.size(); i++) {
+            int x = blocks[i].rect.x;
+            int y = blocks[i].rect.y;
+            int w = blocks[i].rect.width;
+            int h = blocks[i].rect.height;
+            dst.row(y).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
+            dst.row(y + h - 1).colRange(x, x + w - 1).setTo(cv::Scalar(0, 255, 0));
+            dst.col(x).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
+            dst.col(x + w - 1).rowRange(y, y + h - 1).setTo(cv::Scalar(0, 255, 0));
+        }
+        return dst;
+    }
+    // å›¾åƒäºŒå€¼åŒ–å¤„ç†
+    cv::Mat binarize_image(const cv::Mat& src_img)
+    {
+        cv::Mat gray;
+        // è½¬æ¢ä¸ºç°åº¦å›¾(å¦‚æœæ˜¯å½©è‰²å›¾)
+        if (src_img.channels() == 3) {
+            cv::cvtColor(src_img, gray, cv::COLOR_BGR2GRAY);
+        } else {
+            gray = src_img.clone();
+        }
+        cv::Mat binary;
+        cv::threshold(gray, binary, 127, 255, cv::THRESH_BINARY_INV); // åäºŒå€¼åŒ–(é»‘åº•ç™½å­—)
+        return binary;
+    }
+    cv::Mat qimage_to_cv_mat(const QImage& qimage)
+    {
+        cv::Mat mat;
+        switch (qimage.format()) {
+        case QImage::Format_RGB32:
+        case QImage::Format_ARGB32:
+        case QImage::Format_ARGB32_Premultiplied: {
+            mat = cv::Mat(qimage.height(), qimage.width(), CV_8UC4,
+                const_cast<uchar*>(qimage.bits()),
+                static_cast<size_t>(qimage.bytesPerLine()));
+            cv::cvtColor(mat, mat, cv::COLOR_BGRA2BGR);
+            break;
+        }
+        case QImage::Format_RGB888: {
+            mat = cv::Mat(qimage.height(), qimage.width(), CV_8UC3,
+                const_cast<uchar*>(qimage.bits()),
+                static_cast<size_t>(qimage.bytesPerLine()));
+            cv::cvtColor(mat, mat, cv::COLOR_RGB2BGR);
+            break;
+        }
+        case QImage::Format_Grayscale8: {
+            mat = cv::Mat(qimage.height(), qimage.width(), CV_8UC1,
+                const_cast<uchar*>(qimage.bits()),
+                static_cast<size_t>(qimage.bytesPerLine()));
+            break;
+        }
+        default: {
+            // å¦‚æœä¸æ”¯æŒæ ¼å¼ï¼Œå…ˆè½¬æ¢ä¸º RGB888
+            QImage converted = qimage.convertToFormat(QImage::Format_RGB888);
+            mat = cv::Mat(converted.height(), converted.width(), CV_8UC3,
+                const_cast<uchar*>(converted.bits()),
+                static_cast<size_t>(converted.bytesPerLine()));
+            cv::cvtColor(mat, mat, cv::COLOR_RGB2BGR);
+            break;
+        }
+        }
+        return mat.clone(); // è¿”å›æ·±æ‹·è´ä»¥é¿å…å†…å­˜é—®é¢˜
+    }
+    QImage cv_mat_to_qimage(const cv::Mat& mat)
+    {
+        switch (mat.type()) {
+        case CV_8UC1: {
+            QImage image(mat.data, mat.cols, mat.rows,
+                static_cast<int>(mat.step), QImage::Format_Grayscale8);
+            return image.copy();
+        }
+        case CV_8UC3: {
+            QImage image(mat.data, mat.cols, mat.rows,
+                static_cast<int>(mat.step), QImage::Format_RGB888);
+            return image.rgbSwapped().copy(); // BGR -> RGB
+        }
+        case CV_8UC4: {
+            QImage image(mat.data, mat.cols, mat.rows,
+                static_cast<int>(mat.step), QImage::Format_ARGB32);
+            return image.copy();
+        }
+        default: {
+            // å¦‚æœä¸æ”¯æŒæ ¼å¼ï¼Œå…ˆè½¬æ¢ä¸º 8UC3
+            cv::Mat converted;
+            mat.convertTo(converted, CV_8UC3);
+            QImage image(converted.data, converted.cols, converted.rows,
+                static_cast<int>(converted.step), QImage::Format_RGB888);
+            return image.rgbSwapped().copy();
+        }
+        }
+    }
+    digit_block::digit_block(const cv::Rect& rect, const Eigen::MatrixXd data)
+    {
+        this->rect = rect;
+        this->data = data;
+        qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+        QCryptographicHash qhash(QCryptographicHash::Sha256);
+        qhash.addData(reinterpret_cast<const char*>(&timestamp));
+        QByteArray bits;
+        unsigned char bit = 0;
+        int counter = 0;
+        for (int i = 0; i < data.rows(); i++) {
+            for (int j = 0; j < data.cols(); j++) {
+                if (data(i, j) > 0.5) {
+                    bit |= (1 << (7 - counter));
+                }
+                if (++counter == 8) {
+                    bits.append(bit);
+                    bit = 0;
+                    counter = 0;
+                }
+            }
+        }
+        if (counter > 0) {
+            bits.append(bit);
+        }
+        qhash.addData(bits);
+        hash = qhash.result().toHex();
+    }
+}
 }

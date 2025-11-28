@@ -4,36 +4,37 @@
 #include <Eigen/Dense>
 
 namespace chr {
-	enum class pooling_type {
-		max, // ×î´ó³Ø»¯
-		average // Æ½¾ù³Ø»¯
-	};
+enum class pooling_type {
+    max, // æœ€å¤§æ± åŒ–
+    average // å¹³å‡æ± åŒ–
+};
 
-	class pool_layer {
-	private:
-		size_t core_size_; // ³Ø»¯ºË³ß´ç
-		size_t stride_; // ²½³¤
-		pooling_type type_; // ³Ø»¯ÀàĞÍ
-		std::vector<Eigen::MatrixXd> input_; // ÊäÈëÊı¾İ
-		std::vector<Eigen::MatrixXd> feature_map_; // ³Ø»¯ºóµÄÌØÕ÷Í¼
-		std::vector<Eigen::MatrixXd> record_; // ¼ÇÂ¼×î´ó³Ø»¯µÄÎ»ÖÃ(ÓÃÓÚ·´Ïò´«²¥)
-	public:
-		pool_layer(size_t core_size, size_t stride, pooling_type type = pooling_type::max);
-		std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
-		std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& gradient);
-	private:
-		void max_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, Eigen::MatrixXd& record) const;
-		void average_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output) const;
-		Eigen::MatrixXd max_backward(const Eigen::MatrixXd& gradient, const Eigen::MatrixXd& record) const;
-		Eigen::MatrixXd average_backward(const Eigen::MatrixXd& gradient);
-	};
+class pool_layer {
+private:
+    size_t core_size_; // æ± åŒ–æ ¸å°ºå¯¸
+    size_t stride_; // æ­¥é•¿
+    pooling_type type_; // æ± åŒ–ç±»å‹
+    std::vector<Eigen::MatrixXd> input_; // è¾“å…¥æ•°æ®
+    std::vector<Eigen::MatrixXd> feature_map_; // æ± åŒ–åçš„ç‰¹å¾å›¾
+    std::vector<Eigen::MatrixXd> record_; // è®°å½•æœ€å¤§æ± åŒ–çš„ä½ç½®(ç”¨äºåå‘ä¼ æ’­)
+public:
+    pool_layer(size_t core_size, size_t stride, pooling_type type = pooling_type::max);
+    std::vector<Eigen::MatrixXd> forward(const std::vector<Eigen::MatrixXd>& input);
+    std::vector<Eigen::MatrixXd> backward(const std::vector<Eigen::MatrixXd>& gradient);
 
-	// Example:
-	// input: 16 * 10 * 10 (the same size of the record)
-	// settings: 
-	// > core size: 2
-	// > stride: 2
-	// output: 16 * 5 * 5 (the same size of the feature map)
+private:
+    void max_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, Eigen::MatrixXd& record) const;
+    void average_pooling(const Eigen::MatrixXd& input, Eigen::MatrixXd& output) const;
+    Eigen::MatrixXd max_backward(const Eigen::MatrixXd& gradient, const Eigen::MatrixXd& record) const;
+    Eigen::MatrixXd average_backward(const Eigen::MatrixXd& gradient);
+};
+
+// Example:
+// input: 16 * 10 * 10 (the same size of the record)
+// settings:
+// > core size: 2
+// > stride: 2
+// output: 16 * 5 * 5 (the same size of the feature map)
 }
 
 #endif // !POOL_LAYER_HPP
