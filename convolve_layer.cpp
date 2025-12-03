@@ -50,11 +50,19 @@ std::vector<Eigen::MatrixXd> convolve_layer::backward(const std::vector<Eigen::M
     std::vector<Eigen::MatrixXd> next_gradient;
     for (size_t i = 0; i < in_channels_; i++) {
         Eigen::MatrixXd each_channel = Eigen::MatrixXd::Zero(input_[0].rows(), input_[0].cols());
+        size_t rows = (gradient.front().rows() - 1) * stride_ + kernel_size_;
+        size_t cols = (gradient.front().cols() - 1) * stride_ + kernel_size_;
         for (size_t j = 0; j < out_channels_; j++) {
             // 旋转卷积核180度(用于反向传播)
             Eigen::MatrixXd rotated_kernel = filters_[j].kernels[i].reverse();
-            size_t pad_size = kernel_size_ - 1;
-            Eigen::MatrixXd padded = padding({ gradient[j] }, pad_size)[0];
+            Eigen::MatrixXd upsampled = Eigen::MatrixXd::Zero(rows, cols);
+            for (size_t m = 0; m < gradient.front().rows(); m++) {
+                for (size_t n = 0; n < gradient.front().cols(); n++) {
+                    upsampled(m * stride_, n * stride_) = gradient[j](m, n);
+                }
+            }
+            Eigen::MatrixXd padded = Eigen::MatrixXd::Zero(rows + kernel_size_ - 1, cols + kernel_size_ - 1);
+            padded.block(kernel_size_ / 2, kernel_size_ / 2, rows, cols) = upsampled;
             each_channel += convolve(padded, rotated_kernel, 1);
         }
         next_gradient.push_back(std::move(each_channel));
@@ -102,7 +110,7 @@ void convolve_layer::save(std::ostream& file) const
         }
     }
 }
-void convolve_layer::load(std::istream &file)
+void convolve_layer::load(std::istream& file)
 {
     // 读取卷积层基本信息
     uint32_t in_channels, kernel_size, out_channels, padding, stride;

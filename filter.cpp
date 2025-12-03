@@ -1,5 +1,4 @@
 #include "filter.hpp"
-#include <fstream>
 #include <random>
 
 namespace chr {

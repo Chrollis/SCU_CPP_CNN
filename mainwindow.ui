@@ -1,0 +1,703 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1200</width>
+    <height>800</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>GraphicsCore</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="1" column="2">
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="title">
+       <string>Model</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_test_label">
+         <property name="text">
+          <string>Test Label</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="2">
+        <widget class="QPushButton" name="model_browse">
+         <property name="text">
+          <string>Load...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_train_label">
+         <property name="text">
+          <string>Training Label</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="3">
+        <widget class="QLabel" name="label_batch">
+         <property name="text">
+          <string>Batch Size</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="4">
+        <widget class="QLineEdit" name="learning_rate">
+         <property name="text">
+          <string>0.01</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="test_data"/>
+       </item>
+       <item row="5" column="1">
+        <widget class="QLineEdit" name="test_label"/>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_train_data">
+         <property name="text">
+          <string>Training Data</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QPushButton" name="test_data_browse">
+         <property name="text">
+          <string>Browse...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QPushButton" name="train_label_browse">
+         <property name="text">
+          <string>Browse...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QLineEdit" name="model_path">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="lable_model_path">
+         <property name="text">
+          <string>Model Path</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="4">
+        <widget class="QLineEdit" name="batch">
+         <property name="text">
+          <string>1024</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QPushButton" name="train_data_browse">
+         <property name="text">
+          <string>Browse...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="train_label">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_test_data">
+         <property name="text">
+          <string>Test Data</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="train_data">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="3">
+        <widget class="QLabel" name="label_learning_rate">
+         <property name="text">
+          <string>Learning Rate</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QLabel" name="lable_model_type">
+         <property name="text">
+          <string>Model Type</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="3">
+        <widget class="QLabel" name="label_epoch">
+         <property name="text">
+          <string>Epoch Times</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2">
+        <widget class="QPushButton" name="test_label_browse">
+         <property name="text">
+          <string>Browse...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="4">
+        <widget class="QLineEdit" name="epoch">
+         <property name="text">
+          <string>16</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="3" colspan="2">
+        <widget class="QPushButton" name="model_train">
+         <property name="text">
+          <string>Start Training</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QLineEdit" name="model_type">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QGroupBox" name="groupBox_3">
+      <property name="title">
+       <string>Output</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_6">
+       <item row="1" column="1">
+        <widget class="QTextEdit" name="output">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="2" column="2">
+     <widget class="QGroupBox" name="groupBox_4">
+      <property name="title">
+       <string>Painting</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_5">
+       <item row="6" column="3">
+        <widget class="QPushButton" name="recognize">
+         <property name="text">
+          <string>Recognize</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_green">
+         <property name="text">
+          <string>G</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2">
+        <widget class="QSlider" name="green">
+         <property name="maximum">
+          <number>255</number>
+         </property>
+         <property name="pageStep">
+          <number>16</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="2">
+        <widget class="QSlider" name="blue">
+         <property name="maximum">
+          <number>255</number>
+         </property>
+         <property name="pageStep">
+          <number>16</number>
+         </property>
+         <property name="value">
+          <number>0</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="3">
+        <widget class="QPushButton" name="redo">
+         <property name="text">
+          <string>Redo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLabel" name="label_brush_color">
+         <property name="text">
+          <string>RGB(0,0,0)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QPushButton" name="undo">
+         <property name="text">
+          <string>Undo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="2">
+        <widget class="QLineEdit" name="picture_path">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_blue">
+         <property name="text">
+          <string>B</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_red">
+         <property name="text">
+          <string>R</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QSlider" name="red">
+         <property name="maximum">
+          <number>255</number>
+         </property>
+         <property name="pageStep">
+          <number>16</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="3">
+        <widget class="QPushButton" name="picture_browse">
+         <property name="text">
+          <string>Browse...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="brush_color">
+         <property name="text">
+          <string>Brush Color</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="3">
+        <widget class="QPushButton" name="clean">
+         <property name="text">
+          <string>Clean Canvas</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_import_picture">
+         <property name="text">
+          <string>Import Picture</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="1" column="1" rowspan="3">
+     <widget class="QGroupBox" name="groupBox">
+      <property name="title">
+       <string>Canvas</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="1" column="0">
+        <widget class="QWidget" name="canvas" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>512</width>
+           <height>640</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>512</width>
+           <height>640</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_file">
+    <property name="title">
+     <string>Files(&amp;F)</string>
+    </property>
+    <addaction name="action_new_model"/>
+    <addaction name="action_open_model"/>
+    <addaction name="action_save_as"/>
+    <addaction name="separator"/>
+    <addaction name="action_import_picture"/>
+    <addaction name="action_export"/>
+    <addaction name="action_convert"/>
+    <addaction name="action_merge"/>
+    <addaction name="separator"/>
+    <addaction name="action_close"/>
+   </widget>
+   <widget class="QMenu" name="menu_train">
+    <property name="title">
+     <string>Train(&amp;T)</string>
+    </property>
+    <addaction name="action_train_simple"/>
+    <addaction name="action_train_detailed"/>
+    <addaction name="action_stop_train"/>
+    <addaction name="separator"/>
+    <addaction name="action_save"/>
+   </widget>
+   <widget class="QMenu" name="menu_help">
+    <property name="title">
+     <string>Help(&amp;H)</string>
+    </property>
+    <widget class="QMenu" name="menu_language">
+     <property name="title">
+      <string>Language(&amp;L)</string>
+     </property>
+     <addaction name="action_en_US"/>
+     <addaction name="action_zh_CN"/>
+     <addaction name="action_zh_TW"/>
+     <addaction name="action_en_UK"/>
+     <addaction name="action_fr_FR"/>
+     <addaction name="action_ja_JP"/>
+     <addaction name="action_de_DE"/>
+     <addaction name="action_ru_RU"/>
+     <addaction name="action_ko_KR"/>
+     <addaction name="action_es_ES"/>
+     <addaction name="action_pt_BR"/>
+    </widget>
+    <widget class="QMenu" name="menu_font">
+     <property name="title">
+      <string>Font</string>
+     </property>
+     <addaction name="action_font"/>
+     <addaction name="action_size"/>
+     <addaction name="action_bold"/>
+     <addaction name="action_italic"/>
+    </widget>
+    <addaction name="action_help"/>
+    <addaction name="separator"/>
+    <addaction name="action_about"/>
+    <addaction name="menu_language"/>
+    <addaction name="separator"/>
+    <addaction name="menu_font"/>
+   </widget>
+   <widget class="QMenu" name="menu_edit">
+    <property name="title">
+     <string>Edit(&amp;E)</string>
+    </property>
+    <addaction name="action_undo"/>
+    <addaction name="action_redo"/>
+    <addaction name="action_clean"/>
+    <addaction name="action_clear"/>
+    <addaction name="separator"/>
+    <addaction name="action_recognize"/>
+    <addaction name="action_clear_output"/>
+   </widget>
+   <addaction name="menu_file"/>
+   <addaction name="menu_edit"/>
+   <addaction name="menu_train"/>
+   <addaction name="menu_help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_new_model">
+   <property name="text">
+    <string>New Model</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="action_open_model">
+   <property name="text">
+    <string>Open Model</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_import_picture">
+   <property name="text">
+    <string>Import Picture</string>
+   </property>
+  </action>
+  <action name="action_train_detailed">
+   <property name="text">
+    <string>Train (Detailed)</string>
+   </property>
+  </action>
+  <action name="action_train_simple">
+   <property name="text">
+    <string>Train (Simple)</string>
+   </property>
+  </action>
+  <action name="action_about">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="action_undo">
+   <property name="text">
+    <string>Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="action_redo">
+   <property name="text">
+    <string>Redo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Z</string>
+   </property>
+  </action>
+  <action name="action_clean">
+   <property name="text">
+    <string>Clean Canvas</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+C</string>
+   </property>
+  </action>
+  <action name="action_recognize">
+   <property name="text">
+    <string>Recognize</string>
+   </property>
+  </action>
+  <action name="action_clear">
+   <property name="text">
+    <string>Clear Buffer</string>
+   </property>
+  </action>
+  <action name="action_export">
+   <property name="text">
+    <string>Export Recognized Items</string>
+   </property>
+  </action>
+  <action name="action_close">
+   <property name="text">
+    <string>Close</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="action_stop_train">
+   <property name="text">
+    <string>Stop Training</string>
+   </property>
+  </action>
+  <action name="action_save">
+   <property name="text">
+    <string>Save Configurations</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="action_clear_output">
+   <property name="text">
+    <string>Clear Output</string>
+   </property>
+  </action>
+  <action name="action_help">
+   <property name="text">
+    <string>Help</string>
+   </property>
+  </action>
+  <action name="action_save_as">
+   <property name="text">
+    <string>Save As</string>
+   </property>
+  </action>
+  <action name="action_en_US">
+   <property name="text">
+    <string>American English (en_US)</string>
+   </property>
+  </action>
+  <action name="action_zh_CN">
+   <property name="text">
+    <string>Simplified Chinese (zh_CN)</string>
+   </property>
+  </action>
+  <action name="action_zh_TW">
+   <property name="text">
+    <string>Traditional Chinese (zh_TW)</string>
+   </property>
+  </action>
+  <action name="action_en_UK">
+   <property name="text">
+    <string>British English (en_UK)</string>
+   </property>
+  </action>
+  <action name="action_fr_FR">
+   <property name="text">
+    <string>French (fr_FR)</string>
+   </property>
+  </action>
+  <action name="action_ja_JP">
+   <property name="text">
+    <string>Japanese (ja_JP)</string>
+   </property>
+  </action>
+  <action name="action_de_DE">
+   <property name="text">
+    <string>German (de_DE)</string>
+   </property>
+  </action>
+  <action name="action_ru_RU">
+   <property name="text">
+    <string>Russian (ru_RU)</string>
+   </property>
+  </action>
+  <action name="action_ko_KR">
+   <property name="text">
+    <string>Korean (ko_KR)</string>
+   </property>
+  </action>
+  <action name="action_es_ES">
+   <property name="text">
+    <string>Spanish (es_ES)</string>
+   </property>
+  </action>
+  <action name="action_pt_BR">
+   <property name="text">
+    <string>Portuguese (pt_BR)</string>
+   </property>
+  </action>
+  <action name="action_font">
+   <property name="text">
+    <string>Font</string>
+   </property>
+  </action>
+  <action name="action_size">
+   <property name="text">
+    <string>Point Size</string>
+   </property>
+  </action>
+  <action name="action_bold">
+   <property name="text">
+    <string>Bold</string>
+   </property>
+  </action>
+  <action name="action_italic">
+   <property name="text">
+    <string>Italic</string>
+   </property>
+  </action>
+  <action name="action_convert">
+   <property name="text">
+    <string>Convert...</string>
+   </property>
+  </action>
+  <action name="action_merge">
+   <property name="text">
+    <string>Merge...</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

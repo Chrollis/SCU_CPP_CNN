@@ -63,12 +63,7 @@ std::vector<mnist_data> mnist_data::obtain_data(const std::filesystem::path& mni
 {
     std::ifstream mnist_images(mnist_image_path, std::ios::binary);
     std::ifstream mnist_labels(mnist_label_path, std::ios::binary);
-    size_t items = 0;
-    try {
-        items = check_mnist_file(mnist_images, mnist_labels); // 验证文件格式
-    } catch (const std::exception& e) {
-        throw e;
-    }
+    size_t items = check_mnist_file(mnist_images, mnist_labels); // 验证文件格式
     if (offset >= items)
         return {}; // 偏移量不能超过数据集大小
     std::vector<mnist_data> batch;
@@ -99,5 +94,40 @@ std::vector<mnist_data> mnist_data::obtain_data(const std::filesystem::path& mni
         batch.push_back(std::move(piece));
     }
     return batch;
+}
+
+void mnist_data::write_data(const std::filesystem::path& image_path, const std::filesystem::path& label_path, const std::vector<mnist_data>& datas)
+{
+    std::ofstream image_file(image_path, std::ios::binary);
+    if (!image_file.is_open()) {
+        throw std::runtime_error(chr::tr("error.mnist.image_create_failed").toStdString());
+    }
+    std::ofstream label_file(label_path, std::ios::binary);
+    if (!label_file.is_open()) {
+        throw std::runtime_error(chr::tr("error.mnist.label_create_failed").toStdString());
+    }
+    unsigned int magic_number = swap_endian(2051); // MNIST图像魔数
+    unsigned int num = swap_endian(static_cast<unsigned int>(datas.size()));
+    unsigned int num_rows = swap_endian(28);
+    unsigned int num_cols = swap_endian(28);
+    image_file.write(reinterpret_cast<const char*>(&magic_number), 4);
+    image_file.write(reinterpret_cast<const char*>(&num), 4);
+    image_file.write(reinterpret_cast<const char*>(&num_rows), 4);
+    image_file.write(reinterpret_cast<const char*>(&num_cols), 4);
+    magic_number = swap_endian(2049); // MNIST标签魔数
+    label_file.write(reinterpret_cast<const char*>(&magic_number), 4);
+    label_file.write(reinterpret_cast<const char*>(&num), 4);
+    for (const auto& data : datas) {
+        for (int i = 0; i < 28; i++) {
+            for (int j = 0; j < 28; j++) {
+                unsigned char pixel = static_cast<unsigned char>(data.image_(i, j) ? 255 : 0);
+                image_file.write(reinterpret_cast<const char*>(&pixel), 1);
+            }
+        }
+        unsigned char label_byte = static_cast<unsigned char>(data.label_);
+        label_file.write(reinterpret_cast<const char*>(&label_byte), 1);
+    }
+    image_file.close();
+    label_file.close();
 }
 }

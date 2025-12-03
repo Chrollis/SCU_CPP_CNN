@@ -1,6 +1,5 @@
 #include "full_connect_layer.hpp"
 #include "language_manager.h"
-#include <fstream>
 #include <random>
 
 namespace chr {

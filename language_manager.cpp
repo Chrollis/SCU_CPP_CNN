@@ -1,5 +1,4 @@
 #include "language_manager.h"
-#include <QMessageBox>
 #include <filesystem>
 
 language_manager& language_manager::instance()
@@ -31,7 +30,7 @@ void language_manager::load_language(const QString& language_code)
 QString language_manager::translate(const QString& key) const
 {
     if (translations_.contains(key)) {
-        return translations_[key].toString();
+        return translations_[key].toString().isEmpty() ? key : translations_[key].toString();
     }
     return key;
 }

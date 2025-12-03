@@ -17,12 +17,13 @@ public:
     cv::Mat cv_image() const { return image_process::eigen_matrix_to_cv_mat(image_); } // 转换为OpenCV图像格式
     size_t label() const { return label_; } // 获取标签
     bool is_legal() const; // 检查数据是否合法(28x28尺寸)
-private:
+public:
     static unsigned swap_endian(unsigned val); // 字节序转换(大端转小端)
     static unsigned check_mnist_file(std::ifstream& mnist_images, std::ifstream& mnist_labels); // 验证MNIST文件格式
 public:
     // 从MNIST文件读取数据
     static std::vector<mnist_data> obtain_data(const std::filesystem::path& mnist_image_path, const std::filesystem::path& mnist_label_path, size_t offset = 0, size_t size = 60000);
+    static void write_data(const std::filesystem::path& image_path, const std::filesystem::path& label_path, const std::vector<mnist_data>& datas);
 };
 }
 

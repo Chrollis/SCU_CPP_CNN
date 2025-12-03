@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(CNN_HWDR LANGUAGES CXX)
+project(Mini-Digits LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,10 +24,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 qt_standard_project_setup()
 
-qt_add_executable(CNN_HWDR
+qt_add_executable(Mini-Digits
     WIN32 MACOSX_BUNDLE
-    main.cpp
-    graphicscore.cpp graphicscore.h graphicscore.ui
+    main.cpp  resource.rc
+
     image_process.cpp image_process.hpp
     mnist_data.cpp mnist_data.hpp
     activation_function.cpp activation_function.hpp
@@ -37,10 +37,13 @@ qt_add_executable(CNN_HWDR
     le_net5.cpp le_net5.hpp vgg16.cpp vgg16.hpp
     cnn_base.h cnn_base.cpp
     language_manager.h language_manager.cpp
+    mainwindow.h mainwindow.cpp mainwindow.ui
+
+
 
 )
 
-target_link_libraries(CNN_HWDR
+target_link_libraries(Mini-Digits
     PRIVATE
         Qt::Core
         Qt::Widgets
@@ -49,18 +52,18 @@ target_link_libraries(CNN_HWDR
         Eigen3::Eigen
         ${OpenCV_LIBS}
 )
-target_link_libraries(CNN_HWDR PRIVATE Qt6::Core)
+target_link_libraries(Mini-Digits PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 
-install(TARGETS CNN_HWDR
+install(TARGETS Mini-Digits
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 qt_generate_deploy_app_script(
-    TARGET CNN_HWDR
+    TARGET Mini-Digits
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
