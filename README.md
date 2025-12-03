@@ -38,7 +38,7 @@ A comprehensive C++ implementation of Convolutional Neural Networks for MNIST di
 
 1. Download the latest release from the [Releases page](https://github.com/Chrollis/SCU_CPP_CNN/releases)
 2. Extract all files, maintaining the folder structure
-3. Run `GraphicsCore.exe` (Qt version) or `graphics.exe` (legacy EasyX version)
+3. Run `Mini-Digits.exe` (Qt version) or `graphics.exe` (legacy EasyX version)
 
 ### Building from Source
 
